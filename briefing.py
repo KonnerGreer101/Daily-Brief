@@ -204,7 +204,7 @@ def gather_saturday_data():
 
 def call_claude(system_prompt, user_prompt, max_tokens=3500):
     payload = json.dumps({
-        "model": "claude-sonnet-4-20250514",
+        "model": "claude-opus-4-5",
         "max_tokens": max_tokens,
         "system": system_prompt,
         "messages": [{"role": "user", "content": user_prompt}]
@@ -218,9 +218,14 @@ def call_claude(system_prompt, user_prompt, max_tokens=3500):
             "content-type": "application/json",
         }
     )
-    with urllib.request.urlopen(req, timeout=60) as r:
-        data = json.loads(r.read().decode())
-    return data["content"][0]["text"]
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.loads(r.read().decode())
+        return data["content"][0]["text"]
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"  Anthropic API error {e.code}: {body}")
+        raise
 
 
 SYSTEM_PROMPT = """You are the writer of "The Daily Brief" — a personal morning email newsletter for Konner Greer, a Finance & Fintech student at the University of Utah (graduating December 2027). Konner interns at University of Utah Financial Services and is deeply interested in financial markets, economic policy, SEC/DOJ regulatory enforcement, fintech, management consulting, and the New York Yankees.
