@@ -12,6 +12,8 @@ from zoneinfo import ZoneInfo
 # ── Config ─────────────────────────────────────────────────────────────────
 ANTHROPIC_KEY = os.environ["ANTHROPIC_API_KEY"]
 NEWS_KEY      = os.environ["NEWS_API_KEY"]
+FINNHUB_KEY   = os.environ.get("FINNHUB_API_KEY", "")
+GNEWS_KEY     = os.environ.get("GNEWS_API_KEY", "")
 GMAIL_USER    = os.environ["GMAIL_USER"]
 GMAIL_PASS    = os.environ["GMAIL_APP_PASS"]
 
@@ -43,6 +45,10 @@ RSS_FEEDS = {
     "npr_business":     "https://feeds.npr.org/1006/rss.xml",
     "politico":         "https://www.politico.com/rss/politicopicks.xml",
 
+    # SEC EDGAR (direct from the agency)
+    "sec_litigation":   "https://www.sec.gov/rss/litigation/litreleases.xml",
+    "sec_enforcement":  "https://www.sec.gov/rss/litigation/admin.xml",
+
     # Yankees / MLB
     "mlb_yankees":      "https://www.mlb.com/feeds/news/rss.xml?teamId=147",
     "espn_mlb":         "https://www.espn.com/espn/rss/mlb/news",
@@ -62,6 +68,7 @@ SOURCE_NAMES = {
     "guardian_biz": "The Guardian", "guardian_us": "The Guardian",
     "npr_news": "NPR", "npr_business": "NPR", "politico": "Politico",
     "mlb_yankees": "MLB", "espn_mlb": "ESPN",
+    "sec_litigation": "SEC", "sec_enforcement": "SEC",
 }
 
 
@@ -185,7 +192,142 @@ def newsapi_headlines(category="business", page_size=8):
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  LAYER 1C — REAL MARKET DATA (yfinance)
+#  LAYER 1C — FINNHUB (real-time finance news, no 403 issues)
+# ══════════════════════════════════════════════════════════════════════════
+
+def finnhub_news(category="general", min_id=0):
+    """Fetch finance news from Finnhub. Category: general, forex, crypto, merger."""
+    if not FINNHUB_KEY:
+        print("    [finnhub] no API key — skipping")
+        return []
+    try:
+        params = urllib.parse.urlencode({"category": category, "minId": min_id, "token": FINNHUB_KEY})
+        req = urllib.request.Request(
+            f"https://finnhub.io/api/v1/news?{params}", headers=HEADERS)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = json.loads(r.read().decode())
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=26)
+        articles = []
+        for a in data:
+            ts = a.get("datetime", 0)
+            pub_dt = datetime.fromtimestamp(ts, tz=timezone.utc) if ts else None
+            if pub_dt and pub_dt < cutoff:
+                continue
+            headline = a.get("headline","").strip()
+            if not headline:
+                continue
+            articles.append({
+                "title":       headline,
+                "description": (a.get("summary","") or "")[:200],
+                "source":      a.get("source","Finnhub"),
+                "published":   pub_dt.strftime("%Y-%m-%dT%H:%M") if pub_dt else "",
+            })
+        print(f"    [finnhub:{category}] {len(articles)} articles")
+        return articles
+    except Exception as ex:
+        print(f"    [finnhub] {ex}")
+        return []
+
+
+def finnhub_company_news(symbol, days_back=1):
+    """Fetch news for a specific ticker from Finnhub."""
+    if not FINNHUB_KEY:
+        return []
+    try:
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        from_date = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+        params = urllib.parse.urlencode({
+            "symbol": symbol, "from": from_date, "to": today, "token": FINNHUB_KEY
+        })
+        req = urllib.request.Request(
+            f"https://finnhub.io/api/v1/company-news?{params}", headers=HEADERS)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = json.loads(r.read().decode())
+        articles = []
+        for a in data[:6]:
+            headline = a.get("headline","").strip()
+            if headline:
+                articles.append({
+                    "title": headline,
+                    "description": (a.get("summary","") or "")[:200],
+                    "source": a.get("source", "Finnhub"),
+                    "published": "",
+                })
+        return articles
+    except Exception as ex:
+        print(f"    [finnhub company {symbol}] {ex}")
+        return []
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  LAYER 1D — GNEWS (global news API, free tier)
+# ══════════════════════════════════════════════════════════════════════════
+
+def gnews_search(query, max_results=8, lang="en", country="us"):
+    """Search GNews API. Free tier: 100 requests/day."""
+    if not GNEWS_KEY:
+        print("    [gnews] no API key — skipping")
+        return []
+    try:
+        params = urllib.parse.urlencode({
+            "q": query, "lang": lang, "country": country,
+            "max": max_results, "apikey": GNEWS_KEY,
+        })
+        req = urllib.request.Request(
+            f"https://gnews.io/api/v4/search?{params}", headers=HEADERS)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = json.loads(r.read().decode())
+        articles = []
+        for a in data.get("articles", []):
+            title = (a.get("title") or "").strip()
+            if not title:
+                continue
+            articles.append({
+                "title":       title,
+                "description": (a.get("description") or "")[:200],
+                "source":      a.get("source", {}).get("name", "GNews"),
+                "published":   (a.get("publishedAt") or "")[:16],
+            })
+        print(f"    [gnews: {query[:35]}] {len(articles)} articles")
+        return articles
+    except Exception as ex:
+        print(f"    [gnews] {ex}")
+        return []
+
+
+def gnews_top(topic="business", max_results=8):
+    """Fetch top headlines by topic from GNews. Topics: breaking-news, world, business, technology, sports, science, health."""
+    if not GNEWS_KEY:
+        return []
+    try:
+        params = urllib.parse.urlencode({
+            "topic": topic, "lang": "en", "country": "us",
+            "max": max_results, "apikey": GNEWS_KEY,
+        })
+        req = urllib.request.Request(
+            f"https://gnews.io/api/v4/top-headlines?{params}", headers=HEADERS)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = json.loads(r.read().decode())
+        articles = []
+        for a in data.get("articles", []):
+            title = (a.get("title") or "").strip()
+            if not title:
+                continue
+            articles.append({
+                "title":       title,
+                "description": (a.get("description") or "")[:200],
+                "source":      a.get("source", {}).get("name", "GNews"),
+                "published":   (a.get("publishedAt") or "")[:16],
+            })
+        print(f"    [gnews top:{topic}] {len(articles)} articles")
+        return articles
+    except Exception as ex:
+        print(f"    [gnews top] {ex}")
+        return []
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  LAYER 1E — REAL MARKET DATA (yfinance)
 # ══════════════════════════════════════════════════════════════════════════
 
 def fetch_market_data():
@@ -225,7 +367,7 @@ def fetch_market_data():
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  LAYER 1D — FORMATTERS & GATHERERS
+#  LAYER 1F — FORMATTERS & GATHERERS
 # ══════════════════════════════════════════════════════════════════════════
 
 def fmt_articles(articles, n=12):
@@ -261,46 +403,50 @@ def gather_weekday_data():
     print("\n  → Real-time market prices (yfinance)...")
     market_data = fetch_market_data()
 
-    print("\n  → Markets & Finance...")
-    # NewsAPI is the primary workhorse — most reliable from cloud
+    print("\n  → Markets & Finance (NewsAPI + Finnhub + GNews)...")
     markets  = newsapi_headlines(category="business", page_size=8)
-    markets += newsapi_search("stock market S&P 500 Nasdaq earnings Wall Street equities", page_size=6)
-    markets += newsapi_search("stock market rally selloff sector rotation pre-market futures", page_size=5)
-    # RSS as supplement
+    markets += newsapi_search("stock market S&P 500 Nasdaq earnings Wall Street equities sector", page_size=6)
+    markets += finnhub_news(category="general")          # real-time finance news, no 403
+    markets += gnews_top(topic="business", max_results=6)
     markets += fetch_rss_multi(["marketwatch_top", "marketwatch_mk", "bbc_business", "ft_markets"], max_per_feed=4)
 
-    print("\n  → Earnings...")
+    print("\n  → Earnings (NewsAPI + Finnhub)...")
     earnings  = newsapi_search("quarterly earnings EPS revenue beat miss guidance raised lowered", page_size=8)
-    earnings += newsapi_search("earnings results profit loss fiscal quarter analyst estimate", page_size=6)
+    earnings += newsapi_search("earnings results profit loss fiscal quarter analyst estimate", page_size=5)
+    earnings += finnhub_news(category="general")
     earnings += fetch_rss_multi(["marketwatch_top", "seeking_alpha"], max_per_feed=4)
 
-    print("\n  → M&A / IPO / Deals...")
+    print("\n  → M&A / IPO / Deals (NewsAPI + Finnhub merger feed)...")
     deals  = newsapi_search("merger acquisition takeover buyout billion deal agreed signed", page_size=6)
     deals += newsapi_search("IPO initial public offering listing debut S-1 filed valuation", page_size=5)
     deals += newsapi_search("fundraise venture capital raised funding round series billion", page_size=4)
+    deals += finnhub_news(category="merger")             # dedicated M&A feed
     deals += fetch_rss_multi(["marketwatch_top", "guardian_biz"], max_per_feed=3)
 
-    print("\n  → Macro & Policy...")
+    print("\n  → Macro & Policy (NewsAPI + GNews)...")
     macro  = newsapi_search("Federal Reserve rate decision CPI inflation GDP jobs report data", page_size=6)
     macro += newsapi_search("trade tariffs Treasury bonds yield curve economic policy recession", page_size=5)
     macro += newsapi_search("consumer spending retail sales housing starts economic indicator", page_size=4)
+    macro += gnews_search("Federal Reserve inflation GDP economic policy", max_results=5)
     macro += fetch_rss_multi(["npr_business", "ft_markets", "guardian_biz"], max_per_feed=4)
 
-    print("\n  → Market-moving regulatory (major only)...")
-    regulatory  = newsapi_search("SEC fraud indictment charged billion settlement major enforcement", page_size=5)
-    regulatory += newsapi_search("Fed rate decision FOMC bank failure financial crisis systemic", page_size=4)
-    regulatory += fetch_rss_multi(["politico", "npr_news"], max_per_feed=3)
+    print("\n  → Market-moving regulatory (strict filter — SEC feeds + major news)...")
+    regulatory  = fetch_rss_multi(["sec_litigation", "sec_enforcement"], max_per_feed=4)  # direct from SEC.gov
+    regulatory += newsapi_search("SEC fraud indictment charged billion settlement major enforcement", page_size=4)
+    regulatory += newsapi_search("Fed rate decision FOMC bank failure financial crisis systemic", page_size=3)
 
     print("\n  → Finance headlines (broad sectors)...")
     fin_headlines  = newsapi_headlines(category="business", page_size=6)
     fin_headlines += newsapi_search("energy oil pharma biotech retail consumer auto airline semiconductor", page_size=5)
     fin_headlines += newsapi_search("real estate housing banking insurance fintech payments crypto", page_size=4)
+    fin_headlines += gnews_top(topic="business", max_results=5)
     fin_headlines += fetch_rss_multi(["bbc_business", "guardian_biz", "marketwatch_top"], max_per_feed=4)
 
-    print("\n  → Global News...")
+    print("\n  → Global News (NewsAPI + GNews + RSS)...")
     global_news  = newsapi_headlines(category="general", page_size=6)
-    global_news += newsapi_search("China Europe Russia Middle East war election crisis diplomacy geopolitics", page_size=6)
-    global_news += newsapi_search("international trade sanctions foreign policy emerging markets currency", page_size=4)
+    global_news += newsapi_search("China Europe Russia Middle East war election crisis diplomacy", page_size=6)
+    global_news += gnews_top(topic="world", max_results=6)
+    global_news += gnews_search("geopolitics international trade sanctions foreign policy", max_results=5)
     global_news += fetch_rss_multi(["bbc_world", "guardian_world", "guardian_us", "npr_news"], max_per_feed=4)
 
     print("\n  → Yankees...")
