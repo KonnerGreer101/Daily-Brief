@@ -22,42 +22,50 @@ IS_SATURDAY = NOW.weekday() == 5
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  LAYER 1A — RSS FEEDS
+#  LAYER 1A — RSS FEEDS (verified to work from cloud servers)
 # ══════════════════════════════════════════════════════════════════════════
 
 RSS_FEEDS = {
-    # Primary — Markets, Finance, Business
-    "wsj_markets":      "https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines",
-    "wsj_top":          "https://feeds.content.dowjones.io/public/rss/mw_topstories",
-    "nyt_business":     "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
-    "nyt_economy":      "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml",
-    "nyt_dealbook":     "https://rss.nytimes.com/services/xml/rss/nyt/DealBook.xml",
+    # Finance & Markets
+    "ft_markets":       "https://www.ft.com/rss/home",
+    "seeking_alpha":    "https://seekingalpha.com/feed.xml",
+    "investing_news":   "https://www.investing.com/rss/news.rss",
+    "marketwatch_top":  "https://feeds.marketwatch.com/marketwatch/topstories/",
+    "marketwatch_mk":   "https://feeds.marketwatch.com/marketwatch/marketpulse/",
 
-    # Backup / Global breadth
-    "reuters_markets":  "https://feeds.reuters.com/reuters/businessNews",
-    "reuters_world":    "https://feeds.reuters.com/Reuters/worldNews",
-    "reuters_economy":  "https://feeds.reuters.com/reuters/economicNews",
-    "ap_business":      "https://feeds.apnews.com/rss/apf-business",
-    "ap_world":         "https://feeds.apnews.com/rss/apf-worldnews",
-    "ap_politics":      "https://feeds.apnews.com/rss/apf-politics",
+    # Global / General News
     "bbc_world":        "https://feeds.bbci.co.uk/news/world/rss.xml",
     "bbc_business":     "https://feeds.bbci.co.uk/news/business/rss.xml",
-    "ft_markets":       "https://www.ft.com/rss/home/uk",
+    "guardian_world":   "https://www.theguardian.com/world/rss",
+    "guardian_biz":     "https://www.theguardian.com/business/rss",
+    "guardian_us":      "https://www.theguardian.com/us-news/rss",
+    "npr_news":         "https://feeds.npr.org/1001/rss.xml",
+    "npr_business":     "https://feeds.npr.org/1006/rss.xml",
+    "politico":         "https://www.politico.com/rss/politicopicks.xml",
 
-    # Deals / Capital Markets
-    "nyt_technology":   "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
-
-    # Yankees
-    "mlb_yankees":      "https://feeds.mlb.com/rss/mlb/teamNews.rss?teamId=147",
-    "mlb_yankees2":     "https://www.mlb.com/feeds/news/rss.xml?teamId=147",
+    # Yankees / MLB
+    "mlb_yankees":      "https://www.mlb.com/feeds/news/rss.xml?teamId=147",
+    "espn_mlb":         "https://www.espn.com/espn/rss/mlb/news",
 }
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (DailyBrief/1.0) AppleWebKit/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/rss+xml, application/xml, text/xml, */*",
+    "Accept-Language": "en-US,en;q=0.9",
 }
 
-def fetch_rss(feed_key, max_items=8, max_age_hours=26):
+SOURCE_NAMES = {
+    "ft_markets": "FT", "seeking_alpha": "Seeking Alpha",
+    "investing_news": "Investing.com", "marketwatch_top": "MarketWatch",
+    "marketwatch_mk": "MarketWatch", "bbc_world": "BBC",
+    "bbc_business": "BBC", "guardian_world": "The Guardian",
+    "guardian_biz": "The Guardian", "guardian_us": "The Guardian",
+    "npr_news": "NPR", "npr_business": "NPR", "politico": "Politico",
+    "mlb_yankees": "MLB", "espn_mlb": "ESPN",
+}
+
+
+def fetch_rss(feed_key, max_items=8, max_age_hours=30):
     url = RSS_FEEDS.get(feed_key)
     if not url:
         return []
@@ -65,8 +73,8 @@ def fetch_rss(feed_key, max_items=8, max_age_hours=26):
         req = urllib.request.Request(url, headers=HEADERS)
         with urllib.request.urlopen(req, timeout=15) as r:
             raw = r.read()
-        root = ET.fromstring(raw)
-        ns   = {"atom": "http://www.w3.org/2005/Atom"}
+        root   = ET.fromstring(raw)
+        ns     = {"atom": "http://www.w3.org/2005/Atom"}
         entries = root.findall(".//item") or root.findall(".//atom:entry", ns)
         cutoff  = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
         items   = []
@@ -78,11 +86,10 @@ def fetch_rss(feed_key, max_items=8, max_age_hours=26):
                 continue
 
             desc_el = (entry.find("description") or entry.find("summary") or
-                       entry.find("atom:summary", ns) or entry.find("atom:content", ns))
+                       entry.find("atom:summary", ns))
             desc = re.sub(r'<[^>]+>', '', (desc_el.text or "") if desc_el is not None else "").strip()[:200]
 
-            pub_el = (entry.find("pubDate") or entry.find("published") or
-                      entry.find("atom:published", ns) or entry.find("updated"))
+            pub_el  = entry.find("pubDate") or entry.find("published") or entry.find("atom:published", ns)
             pub_str = pub_el.text.strip() if pub_el is not None and pub_el.text else ""
 
             pub_dt = None
@@ -99,32 +106,23 @@ def fetch_rss(feed_key, max_items=8, max_age_hours=26):
             if pub_dt and pub_dt < cutoff:
                 continue
 
-            source_name = {
-                "wsj_markets": "WSJ", "wsj_top": "WSJ",
-                "nyt_business": "NYT", "nyt_economy": "NYT",
-                "nyt_dealbook": "NYT DealBook", "nyt_technology": "NYT",
-                "reuters_markets": "Reuters", "reuters_world": "Reuters",
-                "reuters_economy": "Reuters", "ap_business": "AP",
-                "ap_world": "AP", "ap_politics": "AP",
-                "bbc_world": "BBC", "bbc_business": "BBC",
-                "ft_markets": "FT", "mlb_yankees": "MLB",
-                "mlb_yankees2": "MLB",
-            }.get(feed_key, feed_key.replace("_"," ").title())
-
             items.append({
                 "title": title, "description": desc,
-                "source": source_name, "published": pub_str[:16],
+                "source": SOURCE_NAMES.get(feed_key, feed_key),
+                "published": pub_str[:16],
             })
             if len(items) >= max_items:
                 break
 
+        print(f"    [{feed_key}] {len(items)} articles")
         return items
+
     except Exception as ex:
-        print(f"  RSS [{feed_key}]: {ex}")
+        print(f"    RSS [{feed_key}]: {ex}")
         return []
 
 
-def fetch_rss_multi(feed_keys, max_per_feed=5, max_age_hours=26):
+def fetch_rss_multi(feed_keys, max_per_feed=5, max_age_hours=30):
     results = []
     for key in feed_keys:
         results.extend(fetch_rss(key, max_items=max_per_feed, max_age_hours=max_age_hours))
@@ -132,10 +130,10 @@ def fetch_rss_multi(feed_keys, max_per_feed=5, max_age_hours=26):
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  LAYER 1B — NEWSAPI (gap filler)
+#  LAYER 1B — NEWSAPI (primary data source)
 # ══════════════════════════════════════════════════════════════════════════
 
-def newsapi_search(query, page_size=6, days_back=1):
+def newsapi_search(query, page_size=8, days_back=1):
     since = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%dT%H:%M:%SZ")
     params = urllib.parse.urlencode({
         "q": query, "from": since, "sortBy": "publishedAt",
@@ -146,7 +144,7 @@ def newsapi_search(query, page_size=6, days_back=1):
             f"https://newsapi.org/v2/everything?{params}", headers=HEADERS)
         with urllib.request.urlopen(req, timeout=15) as r:
             data = json.loads(r.read().decode())
-        return [
+        articles = [
             {"title": a.get("title",""),
              "description": (a.get("description") or "")[:200],
              "source": a.get("source",{}).get("name",""),
@@ -154,8 +152,35 @@ def newsapi_search(query, page_size=6, days_back=1):
             for a in data.get("articles",[])
             if a.get("title") and "[Removed]" not in a.get("title","")
         ]
+        print(f"    [newsapi: {query[:40]}] {len(articles)} articles")
+        return articles
     except Exception as ex:
-        print(f"  NewsAPI '{query}': {ex}")
+        print(f"    NewsAPI '{query[:40]}': {ex}")
+        return []
+
+
+def newsapi_headlines(category="business", page_size=8):
+    params = urllib.parse.urlencode({
+        "category": category, "country": "us",
+        "pageSize": page_size, "apiKey": NEWS_KEY,
+    })
+    try:
+        req = urllib.request.Request(
+            f"https://newsapi.org/v2/top-headlines?{params}", headers=HEADERS)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = json.loads(r.read().decode())
+        articles = [
+            {"title": a.get("title",""),
+             "description": (a.get("description") or "")[:200],
+             "source": a.get("source",{}).get("name",""),
+             "published": a.get("publishedAt","")[:16]}
+            for a in data.get("articles",[])
+            if a.get("title") and "[Removed]" not in a.get("title","")
+        ]
+        print(f"    [newsapi headlines: {category}] {len(articles)} articles")
+        return articles
+    except Exception as ex:
+        print(f"    NewsAPI headlines '{category}': {ex}")
         return []
 
 
@@ -191,10 +216,11 @@ def fetch_market_data():
                         "direction":  "up" if pct > 0.05 else ("down" if pct < -0.05 else "flat"),
                     }
             except Exception as ex:
-                print(f"  yfinance [{symbol}]: {ex}")
+                print(f"    yfinance [{symbol}]: {ex}")
+        print(f"    [yfinance] {len(result)} tickers fetched")
         return result
     except ImportError:
-        print("  yfinance not installed")
+        print("    yfinance not installed")
         return {}
 
 
@@ -220,68 +246,66 @@ def fmt_articles(articles, n=12):
 
 def fmt_market_data(md):
     if not md:
-        return "No real-time data available."
+        return "No real-time data available — markets may be closed."
     lines = []
     for symbol, info in md.items():
         arrow = "▲" if info["direction"] == "up" else ("▼" if info["direction"] == "down" else "–")
         if symbol == "^TNX":
-            lines.append(f"• {info['name']}: {info['price']:.2f}% ({arrow}{abs(info['change_pct']):.2f}bp change)")
+            lines.append(f"• {info['name']}: {info['price']:.2f}% ({arrow}{abs(info['change_pct']):.2f}bp)")
         else:
             lines.append(f"• {info['name']}: {info['price']:,.2f} ({arrow}{info['change_pct']:+.2f}%)")
     return "\n".join(lines)
 
 
 def gather_weekday_data():
-    print("  → Real-time market prices...")
+    print("\n  → Real-time market prices (yfinance)...")
     market_data = fetch_market_data()
 
-    print("  → Markets & Finance (WSJ + NYT primary)...")
-    markets = fetch_rss_multi(
-        ["wsj_markets", "wsj_top", "nyt_business", "nyt_economy", "nyt_dealbook"],
-        max_per_feed=6
-    )
-    # Reuters/AP as breadth backup
-    markets += fetch_rss_multi(["reuters_markets", "ap_business"], max_per_feed=3)
-    markets += newsapi_search("stock market earnings Wall Street equities sector movers", page_size=5)
+    print("\n  → Markets & Finance...")
+    # NewsAPI is the primary workhorse — most reliable from cloud
+    markets  = newsapi_headlines(category="business", page_size=8)
+    markets += newsapi_search("stock market S&P 500 Nasdaq earnings Wall Street equities", page_size=6)
+    markets += newsapi_search("stock market rally selloff sector rotation pre-market futures", page_size=5)
+    # RSS as supplement
+    markets += fetch_rss_multi(["marketwatch_top", "marketwatch_mk", "bbc_business", "ft_markets"], max_per_feed=4)
 
-    print("  → Earnings...")
-    earnings = fetch_rss_multi(["wsj_top", "nyt_business", "nyt_dealbook"], max_per_feed=5)
-    earnings += newsapi_search("quarterly earnings EPS beat miss revenue guidance raised lowered", page_size=6)
-    earnings += newsapi_search("profit results fiscal quarter outlook analyst estimate", page_size=4)
+    print("\n  → Earnings...")
+    earnings  = newsapi_search("quarterly earnings EPS revenue beat miss guidance raised lowered", page_size=8)
+    earnings += newsapi_search("earnings results profit loss fiscal quarter analyst estimate", page_size=6)
+    earnings += fetch_rss_multi(["marketwatch_top", "seeking_alpha"], max_per_feed=4)
 
-    print("  → M&A / IPO / Deals...")
-    deals = fetch_rss_multi(["nyt_dealbook", "wsj_markets", "nyt_technology"], max_per_feed=5)
-    deals += newsapi_search("merger acquisition takeover buyout billion agreed signed", page_size=4)
-    deals += newsapi_search("IPO initial public offering listing debut S-1 filed", page_size=3)
-    deals += newsapi_search("fundraise venture capital raised funding round series", page_size=3)
+    print("\n  → M&A / IPO / Deals...")
+    deals  = newsapi_search("merger acquisition takeover buyout billion deal agreed signed", page_size=6)
+    deals += newsapi_search("IPO initial public offering listing debut S-1 filed valuation", page_size=5)
+    deals += newsapi_search("fundraise venture capital raised funding round series billion", page_size=4)
+    deals += fetch_rss_multi(["marketwatch_top", "guardian_biz"], max_per_feed=3)
 
-    print("  → Macro & Policy (WSJ + NYT, major prints only)...")
-    macro = fetch_rss_multi(["nyt_economy", "wsj_top", "reuters_economy"], max_per_feed=5)
-    macro += newsapi_search("Federal Reserve rate decision CPI inflation GDP jobs report", page_size=4)
-    macro += newsapi_search("trade tariffs Treasury economic data consumer spending", page_size=3)
+    print("\n  → Macro & Policy...")
+    macro  = newsapi_search("Federal Reserve rate decision CPI inflation GDP jobs report data", page_size=6)
+    macro += newsapi_search("trade tariffs Treasury bonds yield curve economic policy recession", page_size=5)
+    macro += newsapi_search("consumer spending retail sales housing starts economic indicator", page_size=4)
+    macro += fetch_rss_multi(["npr_business", "ft_markets", "guardian_biz"], max_per_feed=4)
 
-    print("  → Market-moving regulatory (major actions only)...")
-    regulatory = newsapi_search(
-        "SEC fraud indictment charged billion settlement DOJ financial crime systemic", page_size=4
-    )
-    regulatory += newsapi_search(
-        "Fed rate decision FOMC policy shift banking crisis financial stability", page_size=3
-    )
+    print("\n  → Market-moving regulatory (major only)...")
+    regulatory  = newsapi_search("SEC fraud indictment charged billion settlement major enforcement", page_size=5)
+    regulatory += newsapi_search("Fed rate decision FOMC bank failure financial crisis systemic", page_size=4)
+    regulatory += fetch_rss_multi(["politico", "npr_news"], max_per_feed=3)
 
-    print("  → Finance headlines (broad sectors)...")
-    fin_headlines  = fetch_rss_multi(["wsj_top", "nyt_business", "bbc_business"], max_per_feed=5)
-    fin_headlines += newsapi_search("energy oil pharma biotech retail consumer auto airline real estate", page_size=5)
+    print("\n  → Finance headlines (broad sectors)...")
+    fin_headlines  = newsapi_headlines(category="business", page_size=6)
+    fin_headlines += newsapi_search("energy oil pharma biotech retail consumer auto airline semiconductor", page_size=5)
+    fin_headlines += newsapi_search("real estate housing banking insurance fintech payments crypto", page_size=4)
+    fin_headlines += fetch_rss_multi(["bbc_business", "guardian_biz", "marketwatch_top"], max_per_feed=4)
 
-    print("  → Global News (biggest stories, any source)...")
-    global_news  = fetch_rss_multi(
-        ["reuters_world", "ap_world", "ap_politics", "bbc_world", "nyt_economy"],
-        max_per_feed=5
-    )
-    global_news += newsapi_search("China Europe Russia Middle East war election crisis diplomacy", page_size=4)
+    print("\n  → Global News...")
+    global_news  = newsapi_headlines(category="general", page_size=6)
+    global_news += newsapi_search("China Europe Russia Middle East war election crisis diplomacy geopolitics", page_size=6)
+    global_news += newsapi_search("international trade sanctions foreign policy emerging markets currency", page_size=4)
+    global_news += fetch_rss_multi(["bbc_world", "guardian_world", "guardian_us", "npr_news"], max_per_feed=4)
 
-    print("  → Yankees...")
-    yankees  = fetch_rss_multi(["mlb_yankees", "mlb_yankees2"], max_per_feed=6)
-    yankees += newsapi_search("New York Yankees MLB baseball", page_size=4, days_back=2)
+    print("\n  → Yankees...")
+    yankees  = fetch_rss_multi(["mlb_yankees", "espn_mlb"], max_per_feed=6)
+    yankees += newsapi_search("New York Yankees MLB baseball", page_size=5, days_back=2)
 
     return {
         "date":          TODAY,
@@ -298,46 +322,36 @@ def gather_weekday_data():
 
 
 def gather_saturday_data():
-    print("  → Real-time prices...")
+    print("\n  → Real-time prices...")
     market_data = fetch_market_data()
 
-    print("  → Week's markets (WSJ + NYT primary)...")
-    markets  = fetch_rss_multi(
-        ["wsj_markets", "wsj_top", "nyt_business", "nyt_economy"],
-        max_per_feed=6, max_age_hours=150
-    )
-    markets += fetch_rss_multi(["reuters_markets", "ap_business"], max_per_feed=4, max_age_hours=150)
-    markets += newsapi_search("S&P 500 Nasdaq stock market weekly sector performance", page_size=6, days_back=6)
+    print("\n  → Week's markets...")
+    markets  = newsapi_headlines(category="business", page_size=8)
+    markets += newsapi_search("S&P 500 Nasdaq stock market weekly sector performance", page_size=8, days_back=6)
+    markets += fetch_rss_multi(["marketwatch_top", "bbc_business", "ft_markets"], max_per_feed=5, max_age_hours=150)
 
-    print("  → Week's earnings & deals...")
-    earnings_deals  = fetch_rss_multi(
-        ["nyt_dealbook", "wsj_top", "nyt_business"],
-        max_per_feed=5, max_age_hours=150
-    )
-    earnings_deals += newsapi_search("earnings results quarterly revenue IPO merger acquisition", page_size=6, days_back=6)
+    print("\n  → Week's earnings & deals...")
+    earnings_deals  = newsapi_search("earnings results quarterly revenue IPO merger acquisition", page_size=8, days_back=6)
+    earnings_deals += fetch_rss_multi(["seeking_alpha", "marketwatch_top", "guardian_biz"], max_per_feed=5, max_age_hours=150)
 
-    print("  → Week's macro...")
-    macro  = fetch_rss_multi(["nyt_economy", "wsj_top", "reuters_economy"], max_per_feed=5, max_age_hours=150)
-    macro += newsapi_search("Federal Reserve inflation GDP trade policy tariffs economic data", page_size=5, days_back=6)
+    print("\n  → Week's macro...")
+    macro  = newsapi_search("Federal Reserve inflation GDP trade policy tariffs economic data", page_size=6, days_back=6)
+    macro += fetch_rss_multi(["npr_business", "ft_markets", "guardian_biz"], max_per_feed=4, max_age_hours=150)
 
-    print("  → Week's major regulatory...")
-    regulatory = newsapi_search(
-        "SEC fraud indictment charged DOJ financial crime Fed rate FOMC systemic", page_size=4, days_back=6
-    )
+    print("\n  → Week's regulatory...")
+    regulatory = newsapi_search("SEC fraud DOJ indictment Fed rate FOMC systemic financial crisis", page_size=5, days_back=6)
 
-    print("  → Week's global news...")
-    global_news  = fetch_rss_multi(
-        ["reuters_world", "ap_world", "bbc_world", "ap_politics"],
-        max_per_feed=5, max_age_hours=150
-    )
-    global_news += newsapi_search("geopolitics war sanctions diplomacy election crisis", page_size=5, days_back=6)
+    print("\n  → Week's global news...")
+    global_news  = newsapi_headlines(category="general", page_size=6)
+    global_news += newsapi_search("geopolitics war sanctions diplomacy election crisis international", page_size=6, days_back=6)
+    global_news += fetch_rss_multi(["bbc_world", "guardian_world", "npr_news"], max_per_feed=5, max_age_hours=150)
 
-    print("  → Next week's calendar...")
+    print("\n  → Next week's calendar...")
     calendar  = newsapi_search("CPI FOMC Fed meeting earnings next week economic calendar", page_size=5, days_back=3)
-    calendar += fetch_rss_multi(["reuters_economy", "nyt_economy"], max_per_feed=3, max_age_hours=96)
+    calendar += fetch_rss_multi(["npr_business", "marketwatch_top"], max_per_feed=3, max_age_hours=96)
 
-    print("  → Yankees week...")
-    yankees  = fetch_rss_multi(["mlb_yankees", "mlb_yankees2"], max_per_feed=6, max_age_hours=150)
+    print("\n  → Yankees week...")
+    yankees  = fetch_rss_multi(["mlb_yankees", "espn_mlb"], max_per_feed=6, max_age_hours=150)
     yankees += newsapi_search("New York Yankees MLB", page_size=5, days_back=6)
 
     return {
@@ -394,22 +408,22 @@ TONE:
 - Synthesize and explain — never just restate headlines
 
 SOURCE PRIORITY:
-- WSJ and NYT are the primary sources for markets, finance, earnings, and macro. Prefer their framing and reporting over others when available.
-- Reuters, AP, BBC are for global news and backup breadth.
-- Always attribute to the correct outlet.
+- Prefer WSJ and NYT framing when those outlets are cited in the source material
+- Reuters, AP, BBC, Guardian, NPR, MarketWatch, FT are all credible — use the best available
+- Always attribute stories to the correct outlet
 
 REGULATORY / FED FILTER — CRITICAL:
-- Only include SEC, DOJ, Fed, or regulatory content if it is genuinely market-moving.
-- "Market-moving" means: Fed rate decision, major fraud indictment (billion-dollar scale), systemic policy shift, or banking crisis.
-- Do NOT include: routine enforcement actions, small fines, standard speeches, or incremental regulatory updates.
-- If nothing in the regulatory feed clears this bar today, leave the regulatory field as an empty array []. Do not pad it.
+- Only include SEC, DOJ, Fed, or regulatory content if genuinely market-moving
+- "Market-moving" = Fed rate decision, major fraud indictment (billion-dollar scale), systemic policy shift, banking crisis
+- Routine enforcement, small fines, standard speeches = skip entirely
+- If nothing clears this bar, return empty array [] for regulatory — do not pad
 
 DIVERSITY:
-- Each section covers DIFFERENT stories. Never repeat the same company or event across sections.
-- Spread across sectors: tech, finance, energy, healthcare, consumer, industrials, macro, international.
-- Movers: always lead with index/macro moves (S&P, yields, oil, gold) before individual stocks.
-- 3 Finance Headlines must come from 3 different domains.
-- If it was a genuinely slow news day, say so in the opening — don't pad.
+- Each section covers DIFFERENT stories — never repeat the same company/event across sections
+- Spread across sectors: tech, finance, energy, healthcare, consumer, industrials, macro, international
+- Movers: always lead with indices/macro (S&P, Nasdaq, yields, oil, gold) before individual stocks
+- 3 Finance Headlines from 3 different sectors/domains
+- Slow news day = say so honestly in opening, don't pad sections
 
 OUTPUT: Valid JSON only. No markdown, no preamble, no code fences. Raw JSON object only.
 """
@@ -425,12 +439,13 @@ Return a JSON object with EXACTLY these keys:
 
   "earnings": [
     {{"ticker":"TICKER","company":"Full Name","headline":"Sharp headline",
-      "what":"What happened — real numbers","why":"Why it happened","matters":"Why it matters"}}
+      "what":"What happened with real numbers","why":"Why it happened",
+      "matters":"Why it matters for markets or the sector"}}
   ],
 
   "movers": [
-    {{"name":"Index or ticker","change":"actual value e.g. +1.2% or 4.48%",
-      "direction":"up/down/flat","reason":"One clear sentence"}}
+    {{"name":"Index or asset name","change":"exact value e.g. +1.2% or 5,631","direction":"up/down/flat",
+      "reason":"One clear sentence explaining the move"}}
   ],
 
   "deals": [
@@ -439,59 +454,59 @@ Return a JSON object with EXACTLY these keys:
   ],
 
   "fin_headlines": [
-    {{"source":"WSJ or NYT etc","tag":"Topic tag","headline":"Sharp headline",
+    {{"source":"Outlet name","tag":"Sector/Topic tag","headline":"Sharp headline",
       "what":"What happened","matters":"Why it matters","context":"Broader context"}}
   ],
 
   "regulatory": [
     {{"agency":"SEC/DOJ/Fed","tag":"Topic","headline":"Sharp headline",
-      "what":"What happened","matters":"Why it matters for markets"}}
+      "what":"What happened","matters":"Why this is genuinely market-moving"}}
   ],
 
   "global_news": [
-    {{"region":"Region","tag":"Topic","headline":"Sharp headline",
+    {{"region":"Geographic region","tag":"Topic tag","headline":"Sharp headline",
       "summary":"2-3 sentences: what happened and why it matters"}}
   ],
 
   "yankees": {{
-    "result":"Score or Off day",
-    "detail":"2-3 sentences on game or latest news",
-    "next_game":"Opponent, date, time ET, broadcast"
+    "result":"Final score or Off day or Game time TBD",
+    "detail":"2-3 sentences on the game, key performances, or latest team news",
+    "next_game":"Opponent · Date · Time ET · Broadcast"
   }},
 
-  "closing": {{"text":"Quote or insight","attribution":"— Source"}}
+  "closing": {{"text":"Memorable quote or insight","attribution":"— Person or Source"}}
 }}
 
-Rules:
-- earnings: 3-5 items
-- movers: 5-7 items, lead with S&P/Nasdaq/Dow/yields/oil/gold using REAL prices from market data below
-- fin_headlines: exactly 3, from 3 different sectors/domains, WSJ/NYT preferred
-- regulatory: ONLY if genuinely market-moving (rate decision, billion-dollar fraud, systemic shift) — otherwise []
-- global_news: exactly 3, biggest world stories regardless of source
-- Empty array [] if a section has no real content — never pad
+RULES:
+- earnings: 3-5 companies. If slow earnings day, 1-2 is fine — don't pad.
+- movers: 5-7 items. ALWAYS use real prices from market data section below. Lead with S&P/Nasdaq/Dow/yields/oil/gold.
+- fin_headlines: exactly 3 stories from 3 different sectors
+- regulatory: [] unless genuinely market-moving — strict filter
+- global_news: exactly 3, biggest world stories
+- Never return placeholder values like "X.X%" — use real data or omit the item
 
---- REAL-TIME MARKET PRICES (use these exact numbers for movers) ---
+--- REAL-TIME MARKET PRICES (use these exact numbers) ---
 {fmt_market_data(data.get('market_data', {}))}
 
---- MARKETS & FINANCE (WSJ + NYT primary) ---
+--- MARKETS & FINANCE ---
 {fmt_articles(data['markets'], 16)}
 
 --- EARNINGS ---
-{fmt_articles(data['earnings'], 12)}
+{fmt_articles(data['earnings'], 14)}
 
 --- M&A / IPO / DEALS ---
 {fmt_articles(data['deals'], 10)}
 
 --- MACRO & POLICY ---
-{fmt_articles(data['macro'], 10)}
+{fmt_articles(data['macro'], 12)}
 
---- REGULATORY (major actions only — apply strict filter) ---
+--- REGULATORY (apply strict market-moving filter) ---
 {fmt_articles(data['regulatory'], 8)}
 
 --- FINANCE HEADLINES (broad sectors) ---
-{fmt_articles(data['fin_headlines'], 12)}
+{fmt_articles(data['fin_headlines'], 14)}
 
---- GLOBAL NEWS (biggest stories) ---
+--- GLOBAL NEWS ---
 {fmt_articles(data['global_news'], 12)}
 
 --- YANKEES ---
@@ -507,55 +522,44 @@ def generate_saturday_briefing(data):
     fri = mon + timedelta(days=4)
     week_range = f"{mon.strftime('%B %d')}–{fri.strftime('%B %d, %Y')}"
 
-    user_prompt = f"""Today is {data['date']} (Saturday). Write this week's Weekly Brief for the week of {week_range}.
+    user_prompt = f"""Today is {data['date']} (Saturday). Write the Weekly Brief for the week of {week_range}.
 
 Return a JSON object with EXACTLY these keys:
 
 {{
   "week_range": "{week_range}",
-  "opening": "3-4 sentences: dominant themes, overall market/macro story of the week",
-
+  "opening": "3-4 sentences: dominant themes this week, overall market and macro story",
   "themes": [
     {{"title":"Theme title","body":"3-4 sentences: what happened, why, what it means going forward"}}
   ],
-
   "scoreboard": [
-    {{"name":"Asset","value":"Price or level","change":"WTD % change","direction":"up/down/flat"}}
+    {{"name":"Asset","value":"Price/level","change":"WTD change","direction":"up/down/flat"}}
   ],
-
-  "earnings_deals_recap": "3-4 paragraph narrative of the week's most important earnings and deals. Synthesize — what story did earnings tell?",
-
+  "earnings_deals_recap": "3-4 paragraphs synthesizing the week's earnings and deals. What story did earnings tell about the economy?",
   "macro_policy_geo": [
-    {{"tag":"Topic","headline":"Sharp headline",
-      "summary":"3-4 sentences: what happened, why it matters, what to watch"}}
+    {{"tag":"Topic","headline":"Sharp headline","summary":"3-4 sentences: what happened, why it matters, what to watch"}}
   ],
-
-  "regulatory_recap": "1-2 paragraph summary ONLY if something genuinely market-moving happened this week (rate decision, major indictment, systemic shift). Otherwise return empty string.",
-
+  "regulatory_recap": "1-2 paragraphs ONLY if something genuinely market-moving happened this week. Otherwise empty string.",
   "watch_next_week": [
-    {{"day":"MON/TUE/WED/THU/FRI","event":"Event name",
-      "detail":"Why it matters and what to expect"}}
+    {{"day":"MON/TUE/WED/THU/FRI","event":"Event name","detail":"Why it matters and what to expect"}}
   ],
-
   "yankees_week": {{
-    "record":"Week record · season record",
-    "summary":"2-3 sentences on the week",
-    "next_week":"Upcoming opponents"
+    "record":"X-Y this week · XX-XX season","summary":"2-3 sentences on the week",
+    "next_week":"Upcoming opponents and series"
   }},
-
   "closing": {{"text":"Quote fitting for end of week","attribution":"— Source"}}
 }}
 
-themes = 3 | scoreboard = S&P 500, Nasdaq, Dow, 10-Yr Yield, Brent Crude, Gold | macro_policy_geo = 3 | watch_next_week = 4-5
+themes=3 | scoreboard: S&P 500, Nasdaq, Dow, 10-Yr Yield, Brent Crude, Gold | macro_policy_geo=3 | watch_next_week=4-5
 
 --- REAL-TIME PRICES ---
 {fmt_market_data(data.get('market_data', {}))}
 
---- MARKETS (WEEK, WSJ + NYT primary) ---
+--- MARKETS (WEEK) ---
 {fmt_articles(data['markets'], 16)}
 
 --- EARNINGS & DEALS (WEEK) ---
-{fmt_articles(data['earnings_deals'], 12)}
+{fmt_articles(data['earnings_deals'], 14)}
 
 --- MACRO & POLICY (WEEK) ---
 {fmt_articles(data['macro'], 12)}
@@ -640,12 +644,11 @@ body{background:#f0ece4;font-family:'Source Sans 3',Georgia,sans-serif;color:#1a
 </style>"""
 
 
-def e(text):
-    return str(text).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
+def e(t):
+    return str(t).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
 
 
 def render_weekday(d):
-    # Earnings
     earnings_html = ""
     for co in d.get("earnings", []):
         earnings_html += f"""<div class="story">
@@ -659,7 +662,6 @@ def render_weekday(d):
     if not earnings_html:
         earnings_html = '<p class="story-body">No major earnings reported overnight.</p>'
 
-    # Movers
     movers_html = ""
     for mv in d.get("movers", []):
         cls = "up" if mv.get("direction")=="up" else ("down" if mv.get("direction")=="down" else "flat")
@@ -670,7 +672,6 @@ def render_weekday(d):
     if not movers_html:
         movers_html = '<p class="story-body">Market data unavailable — check Bloomberg or CNBC.</p>'
 
-    # Deals
     deals_html = ""
     for deal in d.get("deals", []):
         deals_html += f"""<div class="story">
@@ -683,7 +684,6 @@ def render_weekday(d):
     if not deals_html:
         deals_html = '<p class="story-body">No major deals or IPOs today.</p>'
 
-    # Finance headlines
     fin_html = ""
     for story in d.get("fin_headlines", []):
         fin_html += f"""<div class="story">
@@ -695,7 +695,6 @@ def render_weekday(d):
             <p><strong>Context:</strong> {e(story.get('context',''))}</p>
           </div></div>"""
 
-    # Regulatory — only render if content exists
     reg_items = d.get("regulatory", [])
     reg_section = ""
     if reg_items:
@@ -710,11 +709,8 @@ def render_weekday(d):
               </div></div>"""
         reg_section = f"""<div class="sec">
   <div class="lbl purple">Market-Moving Policy</div>
-  <h2>Regulatory &amp; Policy Shifts</h2>
-  {reg_html}
-</div>"""
+  <h2>Regulatory &amp; Policy Shifts</h2>{reg_html}</div>"""
 
-    # Global
     global_html = ""
     for story in d.get("global_news", []):
         global_html += f"""<div class="story">
@@ -722,13 +718,7 @@ def render_weekday(d):
           <div class="story-hed">{e(story.get('headline',''))}</div>
           <div class="story-body">{e(story.get('summary',''))}</div></div>"""
 
-    # Yankees
-    y = d.get("yankees", {})
-    yankees_html = f"""<div class="ynk">
-          <div class="ynk-score">{e(y.get('result','No game data available'))}</div>
-          <div class="ynk-detail">{e(y.get('detail',''))}</div>
-          <div class="ynk-next">▶ Next: {e(y.get('next_game','Check MLB.com'))}</div></div>"""
-
+    y  = d.get("yankees", {})
     cl = d.get("closing", {})
 
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
@@ -748,7 +738,13 @@ def render_weekday(d):
 <div class="sec"><div class="lbl gold">Today's Headlines</div><h2>Finance &amp; Markets</h2>{fin_html}</div>
 {reg_section}
 <div class="sec"><div class="lbl green">Global News</div><h2>World Stories That Matter</h2>{global_html}</div>
-<div class="sec"><div class="lbl navy">Yankees</div><h2>Bronx Update</h2>{yankees_html}</div>
+<div class="sec"><div class="lbl navy">Yankees</div><h2>Bronx Update</h2>
+  <div class="ynk">
+    <div class="ynk-score">{e(y.get('result','No game data available'))}</div>
+    <div class="ynk-detail">{e(y.get('detail',''))}</div>
+    <div class="ynk-next">▶ Next: {e(y.get('next_game','Check MLB.com'))}</div>
+  </div>
+</div>
 <div class="closing"><blockquote>"{e(cl.get('text',''))}"</blockquote><cite>{e(cl.get('attribution',''))}</cite></div>
 <div class="footer">
   <p>The Daily Brief &nbsp;·&nbsp; Built for <span>Konner Greer</span> &nbsp;·&nbsp; University of Utah, Finance &amp; Fintech '27</p>
@@ -786,8 +782,7 @@ def render_saturday(d):
         reg_section = f"""<div class="sec">
   <div class="lbl purple">Market-Moving Policy</div>
   <h2>Regulatory &amp; Policy This Week</h2>
-  <div class="story-body" style="font-size:14px;line-height:1.75">{e(reg_recap)}</div>
-</div>"""
+  <div class="story-body" style="font-size:14px;line-height:1.75">{e(reg_recap)}</div></div>"""
 
     watch_html = ""
     for item in d.get("watch_next_week",[]):
@@ -796,12 +791,7 @@ def render_saturday(d):
           <div><div class="watch-event">{e(item.get('event',''))}</div>
           <div class="watch-detail">{e(item.get('detail',''))}</div></div></div>"""
 
-    y = d.get("yankees_week",{})
-    yankees_html = f"""<div class="ynk">
-          <div class="ynk-score">{e(y.get('record',''))}</div>
-          <div class="ynk-detail">{e(y.get('summary',''))}</div>
-          <div class="ynk-next">▶ Next week: {e(y.get('next_week','Check MLB.com'))}</div></div>"""
-
+    y  = d.get("yankees_week",{})
     cl = d.get("closing",{})
     week_range = d.get("week_range","This Week")
 
@@ -824,7 +814,13 @@ def render_saturday(d):
 <div class="sec"><div class="lbl green">Macro · Policy · World</div><h2>The Bigger Forces at Work</h2>{macro_html}</div>
 {reg_section}
 <div class="sec"><div class="lbl teal">What to Watch</div><h2>Next Week's Calendar</h2>{watch_html}</div>
-<div class="sec"><div class="lbl navy">Yankees</div><h2>Week in the Bronx</h2>{yankees_html}</div>
+<div class="sec"><div class="lbl navy">Yankees</div><h2>Week in the Bronx</h2>
+  <div class="ynk">
+    <div class="ynk-score">{e(y.get('record',''))}</div>
+    <div class="ynk-detail">{e(y.get('summary',''))}</div>
+    <div class="ynk-next">▶ Next week: {e(y.get('next_week','Check MLB.com'))}</div>
+  </div>
+</div>
 <div class="closing"><blockquote>"{e(cl.get('text',''))}"</blockquote><cite>{e(cl.get('attribution',''))}</cite></div>
 <div class="footer">
   <p>The Weekly Brief &nbsp;·&nbsp; Built for <span>Konner Greer</span> &nbsp;·&nbsp; University of Utah, Finance &amp; Fintech '27</p>
