@@ -1,38 +1,34 @@
 name: Daily Brief
- 
+
 on:
   schedule:
-    # Weekdays at 7:00 AM MT = 14:00 UTC (UTC-7 standard) / 13:00 UTC (UTC-6 daylight)
-    # Using 14:00 UTC — works Nov–Mar. For summer (Mar–Nov), GitHub cron can't auto-adjust,
-    # so this runs at 8:00 AM MDT during daylight saving. Close enough for a morning brief.
-    - cron: '0 14 * * 1-5'   # Mon–Fri
-    # Saturday at 8:00 AM MT = 15:00 UTC
-    - cron: '0 15 * * 6'     # Saturday
- 
-  # Lets you trigger a test run manually from the GitHub Actions tab
+    - cron: '0 14 * * 1-5'   # Mon–Fri ~7:00 AM MT
+    - cron: '0 15 * * 6'     # Saturday ~8:00 AM MT
   workflow_dispatch:
- 
+
 jobs:
   send-brief:
     runs-on: ubuntu-latest
     timeout-minutes: 10
- 
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
- 
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
- 
-      # No pip installs needed — script uses only Python stdlib + API calls
- 
+
+      - name: Install dependencies
+        run: pip install yfinance
+
       - name: Run briefing agent
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NEWS_API_KEY:      ${{ secrets.NEWS_API_KEY }}
+          FINNHUB_API_KEY:   ${{ secrets.FINNHUB_API_KEY }}
+          GNEWS_API_KEY:     ${{ secrets.GNEWS_API_KEY }}
           GMAIL_USER:        ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASS:    ${{ secrets.GMAIL_APP_PASS }}
         run: python briefing.py
- 
