@@ -928,7 +928,7 @@ RULES:
 - science_space: 1-3 items. Skip if nothing real — return []
 - trending_x: use actual posts from the X feed below. If no good posts, set has_content to false and signals to []
 - utah_regional: ONLY if real specific news — otherwise has_news: false, story: ""
-- worth_watching: exactly 3 items
+- worth_watching: exactly 3 items. TODAY IS {TODAY}. ONLY include events that are in the FUTURE — never past events or things that already happened. If a calendar item like "Memorial Day" or any other event has already passed, skip it entirely and pick something genuinely upcoming instead.
 - trend_radar: update from yesterday's narratives + add new ones. day_count should increment from yesterday.
 - term_of_the_day: pick the most relevant concept from today's dominant story
 - one_thing: the single most interesting developing story — something with a bigger picture arc
@@ -1038,7 +1038,7 @@ Return a JSON object with EXACTLY these keys:
   }}
 }}
 
-themes=3 | scoreboard: S&P, Nasdaq, Dow, VIX, 10-Yr, 2-Yr, Spread, Brent, WTI, Gold, Bitcoin | policy_week=3 | worth_watching=4-5
+themes=3 | scoreboard: S&P, Nasdaq, Dow, VIX, 10-Yr, 2-Yr, Spread, Brent, WTI, Gold, Bitcoin | policy_week=3 | worth_watching=4-5 FUTURE EVENTS ONLY — today is {TODAY}, never include anything that has already happened
 
 --- YESTERDAY'S TREND RADAR ---
 {fmt_trend_radar(trend_radar)}
