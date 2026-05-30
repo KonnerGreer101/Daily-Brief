@@ -318,7 +318,7 @@ RSS_FEEDS = {
     "venturebeat":      "https://venturebeat.com/feed/",
     "wired_ai":         "https://www.wired.com/feed/tag/artificial-intelligence/rss",
     # Science / Space
-    "nasa":             "https://www.nasa.gov/rss/dyn/breaking_news.rss",
+    # "nasa": removed — rate limited
     "science_daily":    "https://www.sciencedaily.com/rss/top/science.xml",
     "space_com":        "https://www.space.com/feeds/all",
     # Crypto
@@ -667,11 +667,10 @@ def gather_weekday_data():
 
     print("\n  → Markets & Economy...")
     markets  = newsapi_headlines(category="business", page_size=8)
-    markets += newsapi_search("stock market S&P 500 earnings Wall Street equities IPO M&A deal", page_size=7)
-    markets += newsapi_search("earnings results revenue EPS beat miss guidance raised", page_size=6)
+    markets += newsapi_search("stock market S&P 500 earnings Wall Street equities IPO M&A deal", page_size=5)
+    markets += newsapi_search("earnings results revenue EPS beat miss guidance raised", page_size=5)
     markets += newsapi_search("merger acquisition IPO fundraise venture capital billion", page_size=5)
     markets += finnhub_news(category="general")
-    markets += finnhub_news(category="merger")
     markets += fetch_rss_multi(["marketwatch_top","marketwatch_mk","ft_home","seeking_alpha"], max_per_feed=4)
     markets += gnews_top(topic="business", max_results=6)
 
@@ -803,7 +802,7 @@ def call_claude(system_prompt, user_prompt, max_tokens=5000):
         }
     )
     try:
-        with urllib.request.urlopen(req, timeout=90) as r:
+        with urllib.request.urlopen(req, timeout=180) as r:
             data = json.loads(r.read().decode())
         return data["content"][0]["text"]
     except urllib.error.HTTPError as ex:
@@ -998,28 +997,28 @@ RULES:
 {earnings_str}
 
 --- AI & COMPUTE ---
-{fmt_articles(data['ai'], 16)}
+{fmt_articles(data['ai'], 8)}
 
 --- MARKETS & ECONOMY ---
-{fmt_articles(data['markets'], 18)}
+{fmt_articles(data['markets'], 8)}
 
 --- GOVERNMENT, POLICY & REGULATION ---
-{fmt_articles(data['policy'], 14)}
+{fmt_articles(data['policy'], 6)}
 
 --- CRYPTO & FINTECH ---
-{fmt_articles(data['crypto'], 10)}
+{fmt_articles(data['crypto'], 7)}
 
 --- SCIENCE & SPACE ---
-{fmt_articles(data['science'], 10)}
+{fmt_articles(data['science'], 7)}
 
 --- TRENDING ON X (curated accounts: Litquidity, Ackman, Chamath, Exec Sum, Geiger Capital, etc.) ---
-{fmt_articles(data.get('x_posts', []), 20)}
+{fmt_articles(data.get('x_posts', []), 10)}
 
 --- DEAL FLOW (M&A, VC, IPO, PE, SECONDARIES — Axios Pro Rata, TechCrunch, Reuters, Crunchbase, SEC EDGAR) ---
-{fmt_articles(data.get('deals', []), 20)}
+{fmt_articles(data.get('deals', []), 12)}
 
 --- UTAH & REGIONAL ECONOMY ---
-{fmt_articles(data.get('utah', []), 8)}
+{fmt_articles(data.get('utah', []), 5)}
 """
     raw = call_claude(SYSTEM_PROMPT, user_prompt, max_tokens=5500)
     raw = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
@@ -1102,22 +1101,22 @@ themes=3 | scoreboard: S&P, Nasdaq, Dow, VIX, 10-Yr, 2-Yr, Spread, Brent, WTI, G
 {fmt_fred_data(data.get('fred_data', {}))}
 
 --- AI (WEEK) ---
-{fmt_articles(data['ai'], 14)}
+{fmt_articles(data['ai'], 7)}
 
 --- MARKETS (WEEK) ---
-{fmt_articles(data['markets'], 14)}
+{fmt_articles(data['markets'], 8)}
 
 --- POLICY (WEEK) ---
-{fmt_articles(data['policy'], 12)}
+{fmt_articles(data['policy'], 6)}
 
 --- CRYPTO (WEEK) ---
-{fmt_articles(data['crypto'], 8)}
+{fmt_articles(data['crypto'], 6)}
 
 --- SCIENCE (WEEK) ---
-{fmt_articles(data['science'], 8)}
+{fmt_articles(data['science'], 6)}
 
 --- GLOBAL NEWS (WEEK) ---
-{fmt_articles(data['global_news'], 10)}
+{fmt_articles(data['global_news'], 6)}
 
 --- NEXT WEEK CALENDAR ---
 {fmt_articles([x for x in data['calendar'] if isinstance(x, dict) and 'title' in x], 8)}
