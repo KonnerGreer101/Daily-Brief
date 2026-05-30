@@ -332,6 +332,16 @@ RSS_FEEDS = {
     # Utah
     "slc_tribune":      "https://www.sltrib.com/feed/",
     "deseret_news":     "https://www.deseret.com/arc/outboundfeeds/rss/",
+    # Deal Flow — M&A, VC, IPO, PE, Secondaries
+    "axios_deals":      "https://www.axios.com/feeds/feed.rss",
+    "techcrunch_fundr": "https://techcrunch.com/category/fundings-exits/feed/",
+    "techcrunch_ma":    "https://techcrunch.com/category/mergers-acquisitions/feed/",
+    "crunchbase_news":  "https://news.crunchbase.com/feed/",
+    "reuters_ma":       "https://feeds.reuters.com/reuters/mergersNews",
+    "sec_s1":           "https://efts.sec.gov/LATEST/search-index?q=%22S-1%22&dateRange=custom&startdt={from_date}&forms=S-1&_source=hits.hits._source.period_of_report,hits.hits._source.entity_name,hits.hits._source.file_date&hits.hits.total.value=true",
+    "sec_8k_ma":        "https://efts.sec.gov/LATEST/search-index?q=%22Agreement+and+Plan+of+Merger%22&forms=8-K&_source=hits.hits._source",
+    "ft_deals":         "https://www.ft.com/rss/home/uk",
+    "wsj_deals":        "https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines",
     # Yankees
     "mlb_yankees":      "https://www.mlb.com/feeds/news/rss.xml?teamId=147",
     "espn_mlb":         "https://www.espn.com/espn/rss/mlb/news",
@@ -350,6 +360,10 @@ SOURCE_NAMES = {
     "sec_litigation": "SEC", "sec_enforcement": "SEC",
     "slc_tribune": "SL Tribune", "deseret_news": "Deseret News",
     "mlb_yankees": "MLB", "espn_mlb": "ESPN",
+    "axios_deals": "Axios Pro Rata", "techcrunch_fundr": "TechCrunch",
+    "techcrunch_ma": "TechCrunch", "crunchbase_news": "Crunchbase",
+    "reuters_ma": "Reuters", "sec_s1": "SEC EDGAR",
+    "sec_8k_ma": "SEC EDGAR", "ft_deals": "FT", "wsj_deals": "WSJ/MarketWatch",
 }
 
 def fetch_rss(feed_key, max_items=8, max_age_hours=30):
@@ -684,6 +698,16 @@ def gather_weekday_data():
     science += newsapi_search("robotics quantum computing fusion energy breakthrough longevity", page_size=4)
     science += gnews_top(topic="science", max_results=5)
 
+    print("\n  → Deal Flow (M&A, VC, IPO, PE, Secondaries)...")
+    deals  = fetch_rss_multi(["axios_deals","techcrunch_fundr","techcrunch_ma","crunchbase_news","reuters_ma"], max_per_feed=6)
+    deals += newsapi_search("merger acquisition M&A takeover buyout agreed signed billion deal", page_size=7)
+    deals += newsapi_search("venture capital Series A B C funding raised startup investment round", page_size=7)
+    deals += newsapi_search("IPO initial public offering S-1 filed listing debut priced valuation", page_size=6)
+    deals += newsapi_search("block trade secondary offering PE fund raise debt issuance bond", page_size=5)
+    deals += newsapi_search("private equity fund close LP commit secondary GP-led NAV lending", page_size=5)
+    deals += finnhub_news(category="merger")
+    deals += gnews_search("merger acquisition IPO venture capital funding round", max_results=6)
+
     print("\n  → Trending on X (curated accounts)...")
     x_posts = fetch_all_x_feeds()
 
@@ -700,6 +724,7 @@ def gather_weekday_data():
         "sectors":       sectors,
         "ai":            ai,
         "markets":       markets,
+        "deals":         deals,
         "policy":        policy,
         "crypto":        crypto,
         "science":       science,
@@ -865,6 +890,29 @@ Return a JSON object with EXACTLY these keys:
     "earnings_preview": "1-2 sentences on what's reporting later this week"
   }},
 
+  "deal_flow": {{
+    "ma": [
+      {{"headline": "Sharp headline", "parties": "Acquirer / Target or parties involved",
+        "size": "Deal size if known", "what": "What happened",
+        "matters": "Strategic rationale — why this deal, why now? Implied premium if M&A."}}
+    ],
+    "vc": [
+      {{"company": "Company name", "stage": "Series A/B/C/Growth/Seed",
+        "amount": "Raise amount", "investors": "Lead investor(s)",
+        "what": "What the company does", "matters": "Why this funding round is notable"}}
+    ],
+    "ipo_listings": [
+      {{"company": "Company name", "type": "IPO/Direct Listing/Block Trade/Debt Issuance",
+        "size": "Offering size", "what": "What happened",
+        "matters": "What it signals about market appetite or the sector"}}
+    ],
+    "funds_secondaries": [
+      {{"firm": "Firm name", "type": "Fund Close/Secondary/GP-Led/NAV Lending",
+        "size": "Fund or deal size", "what": "What happened",
+        "matters": "What it signals about LP sentiment or private market dynamics"}}
+    ]
+  }},
+
   "government_policy": [
     {{"tag": "Fed/Trade/Congress/State/SEC-DOJ", "headline": "Sharp headline",
       "what": "What happened", "matters": "Market or policy implications",
@@ -923,6 +971,7 @@ RULES:
 - market_dashboard tiles: use REAL prices from market data below. Include S&P, Nasdaq, Dow, VIX, 2-Yr, 10-Yr, yield curve spread, WTI, Brent, Gold, Bitcoin. Every tile MUST have a story sentence.
 - ai_compute: 2-4 items, no overlap with markets_economy
 - markets_economy earnings: 2-4 companies. movers: 5-7 using real prices. deals: 1-3 if any real deals.
+- deal_flow: populate each sub-bucket with what's real from the source data. ma: 1-3 deals. vc: 2-4 rounds (prioritize notable size or investor). ipo_listings: 1-3 (include block trades and debt deals when notable). funds_secondaries: 1-2 if any real fund closes or secondaries. Return empty array [] for any sub-bucket with no real content today — never pad.
 - government_policy: 2-4 items. SEC/DOJ only if major.
 - crypto_fintech: 1-3 items. Skip if nothing real today — return []
 - science_space: 1-3 items. Skip if nothing real — return []
@@ -965,6 +1014,9 @@ RULES:
 
 --- TRENDING ON X (curated accounts: Litquidity, Ackman, Chamath, Exec Sum, Geiger Capital, etc.) ---
 {fmt_articles(data.get('x_posts', []), 20)}
+
+--- DEAL FLOW (M&A, VC, IPO, PE, SECONDARIES — Axios Pro Rata, TechCrunch, Reuters, Crunchbase, SEC EDGAR) ---
+{fmt_articles(data.get('deals', []), 20)}
 
 --- UTAH & REGIONAL ECONOMY ---
 {fmt_articles(data.get('utah', []), 8)}
@@ -1190,6 +1242,7 @@ def render_weekday(d):
     md   = d.get("market_dashboard", {})
     me   = d.get("markets_economy", {})
     gp   = d.get("government_policy", [])
+    df   = d.get("deal_flow", {})
     cr   = d.get("crypto_fintech", [])
     sc   = d.get("science_space", [])
     tx   = d.get("trending_x", {})
@@ -1267,6 +1320,42 @@ def render_weekday(d):
             <p><strong>What:</strong> {e(deal.get('what',''))}</p>
             <p><strong>Matters:</strong> {e(deal.get('matters',''))}</p>
           </div></div>"""
+
+    # Deal Flow
+    df = d.get("deal_flow", {})
+
+    def deal_flow_subsection(items, label):
+        if not items:
+            return ""
+        html = f'<div class="story-name" style="margin-bottom:8px;margin-top:16px">{label}</div>'
+        for item in items:
+            # Build detail line from available fields
+            meta = " · ".join(filter(None, [
+                item.get("parties","") or item.get("company","") or item.get("firm",""),
+                item.get("size","") or item.get("amount",""),
+                item.get("stage","") or item.get("type",""),
+                item.get("investors",""),
+            ]))
+            html += f"""<div class="story">
+              <div class="story-hed">{e(item.get('headline','') or item.get('company','') or item.get('firm',''))}</div>
+              {"<div class='story-name' style='color:#8a9bb0;text-transform:none;letter-spacing:0'>" + e(meta) + "</div>" if meta else ""}
+              <div class="wwm">
+                <p><strong>What:</strong> {e(item.get('what',''))}</p>
+                <p><strong>Why it matters:</strong> {e(item.get('matters',''))}</p>
+              </div></div>"""
+        return html
+
+    ma_html   = deal_flow_subsection(df.get("ma",[]), "M&A / Strategic")
+    vc_html   = deal_flow_subsection(df.get("vc",[]), "VC / Private Funding")
+    ipo_html  = deal_flow_subsection(df.get("ipo_listings",[]), "IPOs / Listings / Block Trades")
+    fund_html = deal_flow_subsection(df.get("funds_secondaries",[]), "Funds / Secondaries")
+
+    deal_flow_content = ma_html + vc_html + ipo_html + fund_html
+    deal_flow_section = f"""<div class="sec">
+  <div class="lbl copper">Deal Flow</div>
+  <h2>M&amp;A · VC · IPOs · Funds &amp; Secondaries</h2>
+  {deal_flow_content if deal_flow_content else '<p class="story-body">No major deal activity today.</p>'}
+</div>"""
 
     # Government & Policy
     policy_html = ""
@@ -1394,6 +1483,8 @@ def render_weekday(d):
   </div>
   {f'<div style="margin-top:20px"><div class="story-name" style="margin-bottom:10px">Deals &amp; Raises</div>{deals_html}</div>' if deals_html else ''}
 </div>
+
+{deal_flow_section}
 
 <div class="sec">
   <div class="lbl purple">Government, Policy &amp; Regulation</div>
