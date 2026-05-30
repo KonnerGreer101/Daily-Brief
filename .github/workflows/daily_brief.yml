@@ -35,3 +35,11 @@ jobs:
           GMAIL_USER:             ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASS:         ${{ secrets.GMAIL_APP_PASS }}
         run: python briefing.py
+
+      - name: Commit updated trend radar
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "Daily Brief Bot"
+          git add trend_radar.json || true
+          git diff --staged --quiet || git commit -m "Update trend radar [skip ci]"
+          git push || true
