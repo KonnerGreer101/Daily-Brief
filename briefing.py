@@ -867,16 +867,18 @@ Return a JSON object with EXACTLY these keys:
   }},
 
   "ai_compute": [
-    {{"headline": "Sharp headline", "what": "What happened", "why": "Why it happened",
-      "matters": "Why it matters — connect to valuations, competition, or infrastructure buildout"}}
+    {{"headline": "Sharp headline",
+      "bullet_what": "One sentence: what happened — specific, factual",
+      "bullet_why": "One sentence: why it matters — valuation, competition, or infrastructure angle",
+      "bullet_watch": "One sentence: what signal to watch for next"}}
   ],
 
   "markets_economy": {{
     "earnings": [
       {{"ticker": "TICKER", "company": "Name", "headline": "Sharp headline",
-        "what": "Numbers — EPS vs estimate, revenue, guidance",
-        "why": "Business context",
-        "matters": "Market signal — margins, multiples, sector read-through"}}
+        "bullet_what": "One sentence: EPS vs estimate, revenue, key guidance number",
+        "bullet_why": "One sentence: business context — why did they beat/miss",
+        "bullet_watch": "One sentence: sector read-through or what to watch next quarter"}}
     ],
     "movers": [
       {{"name": "Asset", "change": "exact value", "direction": "up/down/flat",
@@ -891,39 +893,48 @@ Return a JSON object with EXACTLY these keys:
 
   "deal_flow": {{
     "ma": [
-      {{"headline": "Sharp headline", "parties": "Acquirer / Target or parties involved",
-        "size": "Deal size if known", "what": "What happened",
-        "matters": "Strategic rationale — why this deal, why now? Implied premium if M&A."}}
+      {{"headline": "Sharp headline", "parties": "Acquirer / Target",
+        "size": "Deal size if known",
+        "bullet_what": "One sentence: deal details and structure",
+        "bullet_why": "One sentence: strategic rationale and implied premium if known"}}
     ],
     "vc": [
       {{"company": "Company name", "stage": "Series A/B/C/Growth/Seed",
         "amount": "Raise amount", "investors": "Lead investor(s)",
-        "what": "What the company does", "matters": "Why this funding round is notable"}}
+        "bullet_what": "One sentence: what the company does",
+        "bullet_why": "One sentence: why this round is notable — valuation signal or sector trend"}}
     ],
     "ipo_listings": [
       {{"company": "Company name", "type": "IPO/Direct Listing/Block Trade/Debt Issuance",
-        "size": "Offering size", "what": "What happened",
-        "matters": "What it signals about market appetite or the sector"}}
+        "size": "Offering size",
+        "bullet_what": "One sentence: what happened",
+        "bullet_why": "One sentence: what it signals about market appetite"}}
     ],
     "funds_secondaries": [
       {{"firm": "Firm name", "type": "Fund Close/Secondary/GP-Led/NAV Lending",
-        "size": "Fund or deal size", "what": "What happened",
-        "matters": "What it signals about LP sentiment or private market dynamics"}}
+        "size": "Fund or deal size",
+        "bullet_what": "One sentence: what happened",
+        "bullet_why": "One sentence: what it signals about LP sentiment or private market dynamics"}}
     ]
   }},
 
   "government_policy": [
     {{"tag": "Fed/Trade/Congress/State/SEC-DOJ", "headline": "Sharp headline",
-      "what": "What happened", "matters": "Market or policy implications",
-      "note": "Include SEC/DOJ ONLY if genuinely market-moving — otherwise omit entirely"}}
+      "bullet_what": "One sentence: what happened",
+      "bullet_why": "One sentence: market or policy implication",
+      "bullet_watch": "One sentence: what to watch as this develops"}}
   ],
 
   "crypto_fintech": [
-    {{"headline": "Sharp headline", "what": "What happened", "matters": "Why it matters for crypto markets or fintech regulation"}}
+    {{"headline": "Sharp headline",
+      "bullet_what": "One sentence: what happened",
+      "bullet_why": "One sentence: why it matters for crypto or fintech"}}
   ],
 
   "science_space": [
-    {{"headline": "Sharp headline", "what": "What happened", "matters": "Why it matters — connect to investment themes, policy, or big-picture trends"}}
+    {{"headline": "Sharp headline",
+      "bullet_what": "One sentence: what happened",
+      "bullet_why": "One sentence: investment or policy implication"}}
   ],
 
   "trending_x": {{
@@ -937,7 +948,9 @@ Return a JSON object with EXACTLY these keys:
 
   "utah_regional": {{
     "has_news": true or false,
-    "story": "If has_news is true: 2-3 sentences on a real Utah/Silicon Slopes story. If false: empty string — do not populate."
+    "headline": "Story headline if has_news is true, else empty string",
+    "bullet_what": "One sentence: what happened locally",
+    "bullet_why": "One sentence: why it connects to broader trends (AI, fintech, regional economy)"
   }},
 
   "worth_watching": [
@@ -1226,6 +1239,16 @@ body{background:#f0ece4;font-family:'Source Sans 3',Georgia,sans-serif;color:#1a
 .sat-day{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#fff;background:#3d5166;padding:4px 8px;height:fit-content;min-width:36px;text-align:center;border-radius:2px}
 .sat-event{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#0d1b2a;margin-bottom:4px}
 .sat-detail{font-size:13px;color:#3a3a3a}
+/* Bullet cards */
+.bcard{margin-bottom:18px;padding-bottom:18px;border-bottom:1px dashed #ddd8cf}
+.bcard:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.bcard-hed{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:#0d1b2a;margin-bottom:8px;line-height:1.3}
+.bcard-meta{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#c9973a;margin-bottom:8px}
+.blist{list-style:none;padding:0;margin:0}
+.blist li{font-size:13.5px;color:#3a3a3a;line-height:1.6;padding:4px 0 4px 18px;position:relative}
+.blist li::before{content:"•";position:absolute;left:4px;color:#c9973a;font-weight:700}
+.blist li.sub{padding-left:32px;color:#555;font-size:13px}
+.blist li.sub::before{content:"↳";left:18px;color:#8a9bb0}
 /* Footer */
 .footer{background:#0a1520;padding:16px 40px;text-align:center}
 .footer p{font-size:11px;color:#4a5a6a}
@@ -1272,27 +1295,35 @@ def render_weekday(d):
     # AI & Compute
     ai_html = ""
     for item in d.get("ai_compute", []):
-        ai_html += f"""<div class="story">
-          <div class="story-hed">{e(item.get('headline',''))}</div>
-          <div class="wwm">
-            <p><strong>What:</strong> {e(item.get('what',''))}</p>
-            <p><strong>Why:</strong> {e(item.get('why',''))}</p>
-            <p><strong>Matters:</strong> {e(item.get('matters',''))}</p>
-          </div></div>"""
+        bullets = ""
+        if item.get("bullet_what"):
+            bullets += f'<li>{e(item["bullet_what"])}</li>'
+        if item.get("bullet_why"):
+            bullets += f'<li class="sub">{e(item["bullet_why"])}</li>'
+        if item.get("bullet_watch"):
+            bullets += f'<li class="sub">👀 {e(item["bullet_watch"])}</li>'
+        ai_html += f"""<div class="bcard">
+          <div class="bcard-hed">{e(item.get('headline',''))}</div>
+          <ul class="blist">{bullets}</ul>
+        </div>"""
     if not ai_html:
         ai_html = '<p class="story-body">No major AI developments today.</p>'
 
     # Earnings
     earnings_html = ""
     for co in me.get("earnings", []):
-        earnings_html += f"""<div class="story">
-          <div class="story-name">{e(co.get('ticker',''))} · {e(co.get('company',''))}</div>
-          <div class="story-hed">{e(co.get('headline',''))}</div>
-          <div class="wwm">
-            <p><strong>What happened:</strong> {e(co.get('what',''))}</p>
-            <p><strong>Why it happened:</strong> {e(co.get('why',''))}</p>
-            <p><strong>Why it matters:</strong> {e(co.get('matters',''))}</p>
-          </div></div>"""
+        bullets = ""
+        if co.get("bullet_what"):
+            bullets += f'<li>{e(co["bullet_what"])}</li>'
+        if co.get("bullet_why"):
+            bullets += f'<li class="sub">{e(co["bullet_why"])}</li>'
+        if co.get("bullet_watch"):
+            bullets += f'<li class="sub">👀 {e(co["bullet_watch"])}</li>'
+        earnings_html += f"""<div class="bcard">
+          <div class="bcard-meta">{e(co.get('ticker',''))} · {e(co.get('company',''))}</div>
+          <div class="bcard-hed">{e(co.get('headline',''))}</div>
+          <ul class="blist">{bullets}</ul>
+        </div>"""
     if not earnings_html:
         earnings_html = '<p class="story-body">No major earnings overnight.</p>'
     if me.get("earnings_preview"):
@@ -1326,22 +1357,26 @@ def render_weekday(d):
     def deal_flow_subsection(items, label):
         if not items:
             return ""
-        html = f'<div class="story-name" style="margin-bottom:8px;margin-top:16px">{label}</div>'
+        html = f'<div class="bcard-meta" style="margin-bottom:10px;margin-top:18px">{label}</div>'
         for item in items:
-            # Build detail line from available fields
             meta = " · ".join(filter(None, [
                 item.get("parties","") or item.get("company","") or item.get("firm",""),
                 item.get("size","") or item.get("amount",""),
                 item.get("stage","") or item.get("type",""),
                 item.get("investors",""),
             ]))
-            html += f"""<div class="story">
-              <div class="story-hed">{e(item.get('headline','') or item.get('company','') or item.get('firm',''))}</div>
-              {"<div class='story-name' style='color:#8a9bb0;text-transform:none;letter-spacing:0'>" + e(meta) + "</div>" if meta else ""}
-              <div class="wwm">
-                <p><strong>What:</strong> {e(item.get('what',''))}</p>
-                <p><strong>Why it matters:</strong> {e(item.get('matters',''))}</p>
-              </div></div>"""
+            bullets = ""
+            bw = item.get("bullet_what","")
+            by = item.get("bullet_why","")
+            if bw:
+                bullets += f'<li>{e(bw)}</li>'
+            if by:
+                bullets += f'<li class="sub">{e(by)}</li>'
+            html += f"""<div class="bcard">
+              <div class="bcard-hed">{e(item.get('headline','') or item.get('company','') or item.get('firm',''))}</div>
+              {"<div style='font-size:11px;color:#8a9bb0;margin-bottom:6px'>" + e(meta) + "</div>" if meta else ""}
+              <ul class="blist">{bullets}</ul>
+            </div>"""
         return html
 
     ma_html   = deal_flow_subsection(df.get("ma",[]), "M&A / Strategic")
@@ -1359,25 +1394,33 @@ def render_weekday(d):
     # Government & Policy
     policy_html = ""
     for item in gp:
-        policy_html += f"""<div class="story">
-          <div class="story-name">{e(item.get('tag',''))}</div>
-          <div class="story-hed">{e(item.get('headline',''))}</div>
-          <div class="wwm">
-            <p><strong>What:</strong> {e(item.get('what',''))}</p>
-            <p><strong>Matters:</strong> {e(item.get('matters',''))}</p>
-          </div></div>"""
+        bullets = ""
+        if item.get("bullet_what"):
+            bullets += f'<li>{e(item["bullet_what"])}</li>'
+        if item.get("bullet_why"):
+            bullets += f'<li class="sub">{e(item["bullet_why"])}</li>'
+        if item.get("bullet_watch"):
+            bullets += f'<li class="sub">👀 {e(item["bullet_watch"])}</li>'
+        policy_html += f"""<div class="bcard">
+          <div class="bcard-meta">{e(item.get('tag',''))}</div>
+          <div class="bcard-hed">{e(item.get('headline',''))}</div>
+          <ul class="blist">{bullets}</ul>
+        </div>"""
     if not policy_html:
         policy_html = '<p class="story-body">No major policy developments today.</p>'
 
     # Crypto & Fintech
     crypto_html = ""
     for item in cr:
-        crypto_html += f"""<div class="story">
-          <div class="story-hed">{e(item.get('headline',''))}</div>
-          <div class="wwm">
-            <p><strong>What:</strong> {e(item.get('what',''))}</p>
-            <p><strong>Matters:</strong> {e(item.get('matters',''))}</p>
-          </div></div>"""
+        bullets = ""
+        if item.get("bullet_what"):
+            bullets += f'<li>{e(item["bullet_what"])}</li>'
+        if item.get("bullet_why"):
+            bullets += f'<li class="sub">{e(item["bullet_why"])}</li>'
+        crypto_html += f"""<div class="bcard">
+          <div class="bcard-hed">{e(item.get('headline',''))}</div>
+          <ul class="blist">{bullets}</ul>
+        </div>"""
     crypto_section = f"""<div class="sec">
   <div class="lbl indigo">Crypto &amp; Fintech</div>
   <h2>Digital Assets &amp; Financial Tech</h2>
@@ -1387,12 +1430,15 @@ def render_weekday(d):
     # Science & Space
     sci_html = ""
     for item in sc:
-        sci_html += f"""<div class="story">
-          <div class="story-hed">{e(item.get('headline',''))}</div>
-          <div class="wwm">
-            <p><strong>What:</strong> {e(item.get('what',''))}</p>
-            <p><strong>Matters:</strong> {e(item.get('matters',''))}</p>
-          </div></div>"""
+        bullets = ""
+        if item.get("bullet_what"):
+            bullets += f'<li>{e(item["bullet_what"])}</li>'
+        if item.get("bullet_why"):
+            bullets += f'<li class="sub">{e(item["bullet_why"])}</li>'
+        sci_html += f"""<div class="bcard">
+          <div class="bcard-hed">{e(item.get('headline',''))}</div>
+          <ul class="blist">{bullets}</ul>
+        </div>"""
     sci_section = f"""<div class="sec">
   <div class="lbl forest">Science &amp; Space</div>
   <h2>Friedberg Corner</h2>
@@ -1415,11 +1461,17 @@ def render_weekday(d):
 
     # Utah
     utah_section = ""
-    if utah.get("has_news") and utah.get("story"):
+    if utah.get("has_news") and utah.get("bullet_what"):
+        u_bullets = f'<li>{e(utah.get("bullet_what",""))}</li>'
+        if utah.get("bullet_why"):
+            u_bullets += f'<li class="sub">{e(utah["bullet_why"])}</li>'
         utah_section = f"""<div class="sec">
   <div class="lbl green">Utah &amp; Regional</div>
   <h2>Silicon Slopes &amp; Local Economy</h2>
-  <p class="story-body">{e(utah['story'])}</p>
+  <div class="bcard">
+    <div class="bcard-hed">{e(utah.get("headline","Local News"))}</div>
+    <ul class="blist">{u_bullets}</ul>
+  </div>
 </div>"""
 
     # Worth Watching
