@@ -2,8 +2,8 @@ name: Daily Brief
 
 on:
   schedule:
-    - cron: '0 14 * * 1-5'   # Mon–Fri ~7:00 AM MT
-    - cron: '0 15 * * 6'     # Saturday ~8:00 AM MT
+   - cron: '30 11 * * 1-5'
+   - cron: '30 14 * * 6'
   workflow_dispatch:
 
 jobs:
