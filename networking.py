@@ -302,23 +302,19 @@ def fetch_networking_targets() -> dict:
         print("  [networking] GOOGLE_CSE_API_KEY or GOOGLE_CSE_CX not set — skipping")
         return {"enabled": False, "tier1": [], "tier2": [], "tier3": [], "week_category": ""}
 
-    # Only run on Mondays (weekday() == 0)
     from datetime import datetime
     from zoneinfo import ZoneInfo
     MT = ZoneInfo("America/Denver")
     now = datetime.now(MT)
-    if now.weekday() != 0:
-        print("  [networking] Not Monday — skipping networking section")
-        return {"enabled": False, "tier1": [], "tier2": [], "tier3": [], "week_category": ""}
 
-    print("  [networking] Monday — fetching weekly targets...")
+    print("  [networking] Fetching daily targets...")
     seen      = load_seen_contacts()
     week_idx  = get_week_index()
 
-    # T1: 5 contacts, T2: 3 contacts, T3: 2 contacts
-    tier1 = search_tier(TIER1_CATEGORIES, 1, 5, seen, week_idx)
-    tier2 = search_tier(TIER2_CATEGORIES, 2, 3, seen, week_idx + 1)
-    tier3 = search_tier(TIER3_CATEGORIES, 3, 2, seen, week_idx + 2)
+    # 3 T1 + 1 T2 + 1 T3 = 5 contacts per day
+    tier1 = search_tier(TIER1_CATEGORIES, 1, 3, seen, week_idx)
+    tier2 = search_tier(TIER2_CATEGORIES, 2, 1, seen, week_idx + 1)
+    tier3 = search_tier(TIER3_CATEGORIES, 3, 1, seen, week_idx + 2)
 
     # Persist updated seen set
     save_seen_contacts(seen)
