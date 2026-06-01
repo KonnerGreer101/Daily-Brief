@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
+from networking import fetch_networking_targets
+from networking_renderer import render_networking_section, NETWORKING_CSS
 
 # ── Config ──────────────────────────────────────────────────────────────
 ANTHROPIC_KEY = os.environ["ANTHROPIC_API_KEY"]
