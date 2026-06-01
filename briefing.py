@@ -1146,6 +1146,7 @@ themes=3 | scoreboard: S&P, Nasdaq, Dow, VIX, 10-Yr, 2-Yr, Spread, Brent, WTI, G
 # ══════════════════════════════════════════════════════════════════════════
 
 CSS = """<style>
+""" + NETWORKING_CSS + """
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@300;400;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#f0ece4;font-family:'Source Sans 3',Georgia,sans-serif;color:#1a1a1a;font-size:15px;line-height:1.65}
