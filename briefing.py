@@ -537,7 +537,109 @@ def gnews_top(topic="business", max_results=8):
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  LAYER 1I — FORMATTERS
+#  LAYER 1I — NEWSLETTER FETCHER (Gmail IMAP)
+# ══════════════════════════════════════════════════════════════════════════
+
+# Newsletters to pull from Gmail each morning
+NEWSLETTER_SOURCES = [
+    {"name": "Short Squeez",       "from": "press@shortsqueez.co"},
+    {"name": "Exec Sum",           "from": "news@execsum.co"},
+    {"name": "MacroGlide",         "from": "newsletter@macroglide.com"},
+    {"name": "Wall Street Rollup", "from": "thewallstreetrollup@mail.beehiiv.com"},
+]
+
+def fetch_newsletters(max_age_hours=30) -> list:
+    """
+    Connects to Gmail via IMAP, finds the latest edition of each newsletter
+    sent in the last max_age_hours, and returns a list of article-style dicts
+    compatible with fmt_articles().
+    """
+    import imaplib
+    import email as emaillib
+    from email.header import decode_header
+
+    articles = []
+    cutoff   = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+
+    try:
+        mail = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+        mail.login(GMAIL_USER, GMAIL_PASS)
+        mail.select("inbox")
+    except Exception as ex:
+        print(f"  [newsletters] Gmail IMAP login failed: {ex}")
+        return []
+
+    for source in NEWSLETTER_SOURCES:
+        try:
+            since_str = (datetime.now(timezone.utc) - timedelta(hours=max_age_hours)).strftime("%d-%b-%Y")
+            _, data = mail.search(None, f'(FROM "{source["from"]}" SINCE {since_str})')
+            ids = data[0].split()
+            if not ids:
+                print(f"  [newsletters] No recent email from {source['name']}")
+                continue
+
+            # Get the most recent one
+            _, msg_data = mail.fetch(ids[-1], "(RFC822)")
+            raw = msg_data[0][1]
+            msg = emaillib.message_from_bytes(raw)
+
+            # Extract subject
+            subj_raw = msg.get("Subject", "")
+            subj_parts = decode_header(subj_raw)
+            subject = ""
+            for part, enc in subj_parts:
+                if isinstance(part, bytes):
+                    subject += part.decode(enc or "utf-8", errors="replace")
+                else:
+                    subject += str(part)
+            subject = subject.strip()
+
+            # Extract body text
+            body = ""
+            if msg.is_multipart():
+                for part in msg.walk():
+                    ct = part.get_content_type()
+                    if ct == "text/plain":
+                        charset = part.get_content_charset() or "utf-8"
+                        body = part.get_payload(decode=True).decode(charset, errors="replace")
+                        break
+                    elif ct == "text/html" and not body:
+                        charset = part.get_content_charset() or "utf-8"
+                        html = part.get_payload(decode=True).decode(charset, errors="replace")
+                        body = re.sub(r'<[^>]+>', ' ', html)
+                        body = re.sub(r'\s+', ' ', body).strip()
+            else:
+                charset = msg.get_content_charset() or "utf-8"
+                body = msg.get_payload(decode=True).decode(charset, errors="replace")
+
+            # Clean and truncate body
+            body = re.sub(r'\s+', ' ', body).strip()
+            snippet = body[:400] if body else ""
+
+            if subject:
+                articles.append({
+                    "title":       subject,
+                    "description": snippet,
+                    "source":      source["name"],
+                    "published":   "",
+                })
+                print(f"  [newsletters] {source['name']}: {subject[:60]}")
+
+        except Exception as ex:
+            print(f"  [newsletters] {source['name']} failed: {ex}")
+            continue
+
+    try:
+        mail.logout()
+    except:
+        pass
+
+    print(f"  [newsletters] {len(articles)} newsletters fetched")
+    return articles
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  LAYER 1J — FORMATTERS
 # ══════════════════════════════════════════════════════════════════════════
 
 def fmt_articles(articles, n=12):
@@ -1018,6 +1120,12 @@ RULES:
 
 --- UTAH & REGIONAL ECONOMY ---
 {fmt_articles(data.get('utah', []), 5)}
+
+--- NEWSLETTERS (Short Squeez, Exec Sum, MacroGlide, Wall Street Rollup) ---
+Note: Newsletter content is blended into the markets, AI, and deals buckets above.
+When you see a source labeled "Short Squeez", "Exec Sum", "MacroGlide", or "Wall Street Rollup",
+treat it as a high-quality curated signal — these are written by finance professionals for finance
+professionals. Prioritize their takes when they add color or context not in other sources.
 """
     raw = call_claude(SYSTEM_PROMPT, user_prompt, max_tokens=5500)
     raw = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
