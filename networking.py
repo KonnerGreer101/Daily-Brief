@@ -86,24 +86,22 @@ CONNECTION_SOURCES = [
         "queries": [
             '"University of Utah"',
             '"David Eccles School of Business"',
-            '"University of Utah" "Eccles"',
         ],
     },
     {
         "id":      "byu",
         "label":   "BYU / Utah Schools Connection",
         "queries": [
-            '"Brigham Young University" OR "BYU Marriott"',
-            '"Utah State University"',
-            '"Westminster University" Salt Lake',
+            '"Brigham Young University"',
+            '"BYU Marriott"',
         ],
     },
     {
         "id":      "seo",
         "label":   "SEO Alumni",
         "queries": [
-            '"SEO" "Sponsors for Educational Opportunity"',
-            '"SEO Career" OR "SEO Alternative Investments"',
+            '"Sponsors for Educational Opportunity"',
+            '"SEO Career"',
         ],
     },
 ]
