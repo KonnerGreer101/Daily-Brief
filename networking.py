@@ -248,7 +248,7 @@ def build_queries(role_keywords: list, connection_queries: list) -> list:
     for conn_q in connection_queries:
         # Use first role keyword per connection source to stay within quota
         kw = role_keywords[0]
-        queries.append(f'site:linkedin.com/in/ {conn_q} "{kw}"')
+        queries.append(f'{conn_q} "{kw}"')
     return queries
 
 
