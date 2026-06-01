@@ -798,8 +798,14 @@ def gather_weekday_data():
     utah += newsapi_search("Utah Silicon Slopes tech startup data center Salt Lake City economy", page_size=5, days_back=3)
     utah += newsapi_search("Entrata Podium Divvy Recursion Pharmaceuticals Domo Utah tech", page_size=4, days_back=7)
 
-    # ── NETWORKING (Mondays only) ────────────────────────────────────────
-    print("\n  → Weekly networking targets (Mondays only)...")
+    print("\n  → Newsletters (Gmail)...")
+    newsletters = fetch_newsletters(max_age_hours=30)
+    if newsletters:
+        markets += newsletters
+        ai      += newsletters
+        deals   += newsletters
+
+    print("\n  → Daily networking targets...")
     networking = fetch_networking_targets()
 
     return {
@@ -854,6 +860,12 @@ def gather_saturday_data():
     print("\n  → Next week calendar...")
     calendar = newsapi_search("CPI FOMC Fed earnings next week economic calendar", page_size=5, days_back=3)
     calendar += fetch_fmp_earnings_calendar(days_ahead=7)
+
+    print("\n  → Newsletters (Gmail)...")
+    newsletters = fetch_newsletters(max_age_hours=150)
+    if newsletters:
+        markets += newsletters
+        ai      += newsletters
 
     return {
         "date":        TODAY,
