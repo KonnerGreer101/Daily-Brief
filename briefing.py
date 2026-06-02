@@ -9,8 +9,6 @@ from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
-from networking import fetch_networking_targets
-from networking_renderer import render_networking_section, NETWORKING_CSS
 
 # ── Config ──────────────────────────────────────────────────────────────
 ANTHROPIC_KEY = os.environ["ANTHROPIC_API_KEY"]
@@ -207,6 +205,7 @@ def fetch_fmp_sector_performance():
 #  LAYER 1D — NITTER RSS (X/Twitter accounts)
 # ══════════════════════════════════════════════════════════════════════════
 
+# Confirmed X handles for Konner's feed
 X_ACCOUNTS = {
     "litcapital":      "Litquidity",
     "BoringBiz_":      "Boring Business",
@@ -221,6 +220,7 @@ X_ACCOUNTS = {
     "Geiger_Capital":  "Geiger Capital",
 }
 
+# Public Nitter instances — tries each until one works
 NITTER_INSTANCES = [
     "https://nitter.net",
     "https://nitter.privacydev.net",
@@ -247,8 +247,10 @@ def fetch_nitter_rss(handle, display_name, max_items=5):
                 title = (title_el.text or "").strip() if title_el is not None else ""
                 if not title or len(title) < 15:
                     continue
+                # Filter out pure retweets and empty image posts
                 if title.startswith("RT @"):
                     continue
+
                 pub_el  = entry.find("pubDate")
                 pub_str = pub_el.text.strip() if pub_el is not None and pub_el.text else ""
                 pub_dt  = None
@@ -262,6 +264,8 @@ def fetch_nitter_rss(handle, display_name, max_items=5):
                         continue
                 if pub_dt and pub_dt < cutoff:
                     continue
+
+                # Clean HTML from title
                 title = re.sub(r'<[^>]+>', '', title).strip()
                 items.append({
                     "title":       title,
@@ -271,15 +275,17 @@ def fetch_nitter_rss(handle, display_name, max_items=5):
                 })
                 if len(items) >= max_items:
                     break
+
             if items:
                 print(f"    [nitter @{handle}] {len(items)} posts via {instance}")
                 return items
         except Exception as ex:
-            continue
+            continue  # Try next instance
     print(f"    [nitter @{handle}] all instances failed")
     return []
 
 def fetch_all_x_feeds():
+    """Fetch posts from all curated X accounts."""
     all_posts = []
     for handle, name in X_ACCOUNTS.items():
         posts = fetch_nitter_rss(handle, name, max_items=4)
@@ -293,10 +299,12 @@ def fetch_all_x_feeds():
 # ══════════════════════════════════════════════════════════════════════════
 
 RSS_FEEDS = {
+    # Finance
     "marketwatch_top":  "https://feeds.marketwatch.com/marketwatch/topstories/",
     "marketwatch_mk":   "https://feeds.marketwatch.com/marketwatch/marketpulse/",
     "ft_home":          "https://www.ft.com/rss/home",
     "seeking_alpha":    "https://seekingalpha.com/feed.xml",
+    # Global news
     "bbc_world":        "https://feeds.bbci.co.uk/news/world/rss.xml",
     "bbc_business":     "https://feeds.bbci.co.uk/news/business/rss.xml",
     "bbc_tech":         "https://feeds.bbci.co.uk/news/technology/rss.xml",
@@ -305,18 +313,26 @@ RSS_FEEDS = {
     "guardian_world":   "https://www.theguardian.com/world/rss",
     "npr_business":     "https://feeds.npr.org/1006/rss.xml",
     "npr_tech":         "https://feeds.npr.org/1019/rss.xml",
+    # Tech / AI
     "techmeme":         "https://www.techmeme.com/feed.xml",
     "venturebeat":      "https://venturebeat.com/feed/",
     "wired_ai":         "https://www.wired.com/feed/tag/artificial-intelligence/rss",
+    # Science / Space
+    # "nasa": removed — rate limited
     "science_daily":    "https://www.sciencedaily.com/rss/top/science.xml",
     "space_com":        "https://www.space.com/feeds/all",
+    # Crypto
     "coindesk":         "https://www.coindesk.com/arc/outboundfeeds/rss/",
     "cointelegraph":    "https://cointelegraph.com/rss",
+    # Policy / Gov
     "politico":         "https://www.politico.com/rss/politicopicks.xml",
+    # SEC
     "sec_litigation":   "https://www.sec.gov/rss/litigation/litreleases.xml",
     "sec_enforcement":  "https://www.sec.gov/rss/litigation/admin.xml",
+    # Utah
     "slc_tribune":      "https://www.sltrib.com/feed/",
     "deseret_news":     "https://www.deseret.com/arc/outboundfeeds/rss/",
+    # Deal Flow — M&A, VC, IPO, PE, Secondaries
     "axios_deals":      "https://www.axios.com/feeds/feed.rss",
     "techcrunch_fundr": "https://techcrunch.com/category/fundings-exits/feed/",
     "techcrunch_ma":    "https://techcrunch.com/category/mergers-acquisitions/feed/",
@@ -326,6 +342,7 @@ RSS_FEEDS = {
     "sec_8k_ma":        "https://efts.sec.gov/LATEST/search-index?q=%22Agreement+and+Plan+of+Merger%22&forms=8-K&_source=hits.hits._source",
     "ft_deals":         "https://www.ft.com/rss/home/uk",
     "wsj_deals":        "https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines",
+    # Yankees
     "mlb_yankees":      "https://www.mlb.com/feeds/news/rss.xml?teamId=147",
     "espn_mlb":         "https://www.espn.com/espn/rss/mlb/news",
 }
@@ -537,112 +554,11 @@ def gnews_top(topic="business", max_results=8):
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  LAYER 1I — NEWSLETTER FETCHER (Gmail IMAP)
-# ══════════════════════════════════════════════════════════════════════════
-
-# Newsletters to pull from Gmail each morning
-NEWSLETTER_SOURCES = [
-    {"name": "Short Squeez",       "from": "press@shortsqueez.co"},
-    {"name": "Exec Sum",           "from": "news@execsum.co"},
-    {"name": "MacroGlide",         "from": "newsletter@macroglide.com"},
-    {"name": "Wall Street Rollup", "from": "thewallstreetrollup@mail.beehiiv.com"},
-]
-
-def fetch_newsletters(max_age_hours=30) -> list:
-    """
-    Connects to Gmail via IMAP, finds the latest edition of each newsletter
-    sent in the last max_age_hours, and returns a list of article-style dicts
-    compatible with fmt_articles().
-    """
-    import imaplib
-    import email as emaillib
-    from email.header import decode_header
-
-    articles = []
-    cutoff   = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
-
-    try:
-        mail = imaplib.IMAP4_SSL("imap.gmail.com", 993)
-        mail.login(GMAIL_USER, GMAIL_PASS)
-        mail.select("inbox")
-    except Exception as ex:
-        print(f"  [newsletters] Gmail IMAP login failed: {ex}")
-        return []
-
-    for source in NEWSLETTER_SOURCES:
-        try:
-            since_str = (datetime.now(timezone.utc) - timedelta(hours=max_age_hours)).strftime("%d-%b-%Y")
-            _, data = mail.search(None, f'(FROM "{source["from"]}" SINCE {since_str})')
-            ids = data[0].split()
-            if not ids:
-                print(f"  [newsletters] No recent email from {source['name']}")
-                continue
-
-            # Get the most recent one
-            _, msg_data = mail.fetch(ids[-1], "(RFC822)")
-            raw = msg_data[0][1]
-            msg = emaillib.message_from_bytes(raw)
-
-            # Extract subject
-            subj_raw = msg.get("Subject", "")
-            subj_parts = decode_header(subj_raw)
-            subject = ""
-            for part, enc in subj_parts:
-                if isinstance(part, bytes):
-                    subject += part.decode(enc or "utf-8", errors="replace")
-                else:
-                    subject += str(part)
-            subject = subject.strip()
-
-            # Extract body text
-            body = ""
-            if msg.is_multipart():
-                for part in msg.walk():
-                    ct = part.get_content_type()
-                    if ct == "text/plain":
-                        charset = part.get_content_charset() or "utf-8"
-                        body = part.get_payload(decode=True).decode(charset, errors="replace")
-                        break
-                    elif ct == "text/html" and not body:
-                        charset = part.get_content_charset() or "utf-8"
-                        html = part.get_payload(decode=True).decode(charset, errors="replace")
-                        body = re.sub(r'<[^>]+>', ' ', html)
-                        body = re.sub(r'\s+', ' ', body).strip()
-            else:
-                charset = msg.get_content_charset() or "utf-8"
-                body = msg.get_payload(decode=True).decode(charset, errors="replace")
-
-            # Clean and truncate body
-            body = re.sub(r'\s+', ' ', body).strip()
-            snippet = body[:400] if body else ""
-
-            if subject:
-                articles.append({
-                    "title":       subject,
-                    "description": snippet,
-                    "source":      source["name"],
-                    "published":   "",
-                })
-                print(f"  [newsletters] {source['name']}: {subject[:60]}")
-
-        except Exception as ex:
-            print(f"  [newsletters] {source['name']} failed: {ex}")
-            continue
-
-    try:
-        mail.logout()
-    except:
-        pass
-
-    print(f"  [newsletters] {len(articles)} newsletters fetched")
-    return articles
-
-
-# ══════════════════════════════════════════════════════════════════════════
-#  LAYER 1J — FORMATTERS
+#  LAYER 1I — FORMATTERS
 # ══════════════════════════════════════════════════════════════════════════
 
 def fmt_articles(articles, n=12):
+    """Deduplicated article list for Claude prompt."""
     if not articles:
         return "No articles found."
     seen, lines = set(), []
@@ -764,6 +680,7 @@ def gather_weekday_data():
     policy += newsapi_search("state governor economic policy major legislation US", page_size=4)
     policy += fetch_rss_multi(["politico","npr_business"], max_per_feed=5)
     policy += gnews_search("US government policy Federal Reserve regulation", max_results=5)
+    # SEC/DOJ — only pulled when major
     policy += fetch_rss_multi(["sec_litigation","sec_enforcement"], max_per_feed=3)
     policy += newsapi_search("SEC DOJ fraud indictment billion charged financial crime systemic", page_size=4)
 
@@ -798,16 +715,6 @@ def gather_weekday_data():
     utah += newsapi_search("Utah Silicon Slopes tech startup data center Salt Lake City economy", page_size=5, days_back=3)
     utah += newsapi_search("Entrata Podium Divvy Recursion Pharmaceuticals Domo Utah tech", page_size=4, days_back=7)
 
-    print("\n  → Newsletters (Gmail)...")
-    newsletters = fetch_newsletters(max_age_hours=30)
-    if newsletters:
-        markets += newsletters
-        ai      += newsletters
-        deals   += newsletters
-
-    print("\n  → Daily networking targets...")
-    networking = fetch_networking_targets()
-
     return {
         "date":          TODAY,
         "market_data":   market_data,
@@ -822,7 +729,6 @@ def gather_weekday_data():
         "science":       science,
         "x_posts":       x_posts,
         "utah":          utah,
-        "networking":    networking,
     }
 
 
@@ -860,12 +766,6 @@ def gather_saturday_data():
     print("\n  → Next week calendar...")
     calendar = newsapi_search("CPI FOMC Fed earnings next week economic calendar", page_size=5, days_back=3)
     calendar += fetch_fmp_earnings_calendar(days_ahead=7)
-
-    print("\n  → Newsletters (Gmail)...")
-    newsletters = fetch_newsletters(max_age_hours=150)
-    if newsletters:
-        markets += newsletters
-        ai      += newsletters
 
     return {
         "date":        TODAY,
@@ -1132,16 +1032,42 @@ RULES:
 
 --- UTAH & REGIONAL ECONOMY ---
 {fmt_articles(data.get('utah', []), 5)}
-
---- NEWSLETTERS (Short Squeez, Exec Sum, MacroGlide, Wall Street Rollup) ---
-Note: Newsletter content is blended into the markets, AI, and deals buckets above.
-When you see a source labeled "Short Squeez", "Exec Sum", "MacroGlide", or "Wall Street Rollup",
-treat it as a high-quality curated signal — these are written by finance professionals for finance
-professionals. Prioritize their takes when they add color or context not in other sources.
 """
-    raw = call_claude(SYSTEM_PROMPT, user_prompt, max_tokens=5500)
+    raw = call_claude(SYSTEM_PROMPT, user_prompt, max_tokens=8000)
     raw = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-    return json.loads(raw)
+    # Safety: if JSON is truncated, try to fix it
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Truncation recovery: find last complete top-level key and close the JSON
+        print("  ⚠️ JSON truncated — attempting recovery...")
+        # Find the last complete closing brace/bracket pair
+        last_good = max(raw.rfind('}},'), raw.rfind('},'), raw.rfind(']},'), raw.rfind('"]'))
+        if last_good > 0:
+            truncated = raw[:last_good + 2]
+            # Count open braces vs closed
+            opens = truncated.count('{') - truncated.count('}')
+            closes = truncated.count('[') - truncated.count(']')
+            recovery = truncated + (']' * max(0, closes)) + ('}' * max(0, opens))
+            try:
+                return json.loads(recovery)
+            except:
+                pass
+        # Last resort: return minimal valid structure
+        print("  ❌ JSON recovery failed — returning minimal structure")
+        return {
+            "opening": "Brief generation encountered an error today. Markets data and key stories were pulled but the summary could not be completed.",
+            "market_dashboard": {"tiles": [], "yield_curve_story": "", "macro_snapshot": ""},
+            "ai_compute": [], "markets_economy": {"earnings": [], "movers": [], "deals": [], "earnings_preview": ""},
+            "deal_flow": {"ma": [], "vc": [], "ipo_listings": [], "funds_secondaries": []},
+            "government_policy": [], "crypto_fintech": [], "science_space": [],
+            "trending_x": {"has_content": False, "signals": [], "x_note": ""},
+            "utah_regional": {"has_news": False, "headline": "", "bullet_what": "", "bullet_why": ""},
+            "worth_watching": [{"item": "Check back tomorrow", "why": "Brief generation encountered an issue today"}],
+            "trend_radar": {"narratives": [], "new_this_week": ""},
+            "term_of_the_day": {"term": "N/A", "definition": "Brief unavailable today.", "context": ""},
+            "one_thing": {"headline": "Brief unavailable today", "body": "An error occurred during generation. Check the GitHub Actions log for details."}
+        }
 
 
 def generate_saturday_briefing(data, trend_radar):
@@ -1240,9 +1166,41 @@ themes=3 | scoreboard: S&P, Nasdaq, Dow, VIX, 10-Yr, 2-Yr, Spread, Brent, WTI, G
 --- NEXT WEEK CALENDAR ---
 {fmt_articles([x for x in data['calendar'] if isinstance(x, dict) and 'title' in x], 8)}
 """
-    raw = call_claude(SYSTEM_PROMPT, user_prompt, max_tokens=5500)
+    raw = call_claude(SYSTEM_PROMPT, user_prompt, max_tokens=8000)
     raw = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-    return json.loads(raw)
+    # Safety: if JSON is truncated, try to fix it
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Truncation recovery: find last complete top-level key and close the JSON
+        print("  ⚠️ JSON truncated — attempting recovery...")
+        # Find the last complete closing brace/bracket pair
+        last_good = max(raw.rfind('}},'), raw.rfind('},'), raw.rfind(']},'), raw.rfind('"]'))
+        if last_good > 0:
+            truncated = raw[:last_good + 2]
+            # Count open braces vs closed
+            opens = truncated.count('{') - truncated.count('}')
+            closes = truncated.count('[') - truncated.count(']')
+            recovery = truncated + (']' * max(0, closes)) + ('}' * max(0, opens))
+            try:
+                return json.loads(recovery)
+            except:
+                pass
+        # Last resort: return minimal valid structure
+        print("  ❌ JSON recovery failed — returning minimal structure")
+        return {
+            "opening": "Brief generation encountered an error today. Markets data and key stories were pulled but the summary could not be completed.",
+            "market_dashboard": {"tiles": [], "yield_curve_story": "", "macro_snapshot": ""},
+            "ai_compute": [], "markets_economy": {"earnings": [], "movers": [], "deals": [], "earnings_preview": ""},
+            "deal_flow": {"ma": [], "vc": [], "ipo_listings": [], "funds_secondaries": []},
+            "government_policy": [], "crypto_fintech": [], "science_space": [],
+            "trending_x": {"has_content": False, "signals": [], "x_note": ""},
+            "utah_regional": {"has_news": False, "headline": "", "bullet_what": "", "bullet_why": ""},
+            "worth_watching": [{"item": "Check back tomorrow", "why": "Brief generation encountered an issue today"}],
+            "trend_radar": {"narratives": [], "new_this_week": ""},
+            "term_of_the_day": {"term": "N/A", "definition": "Brief unavailable today.", "context": ""},
+            "one_thing": {"headline": "Brief unavailable today", "body": "An error occurred during generation. Check the GitHub Actions log for details."}
+        }
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1250,19 +1208,21 @@ themes=3 | scoreboard: S&P, Nasdaq, Dow, VIX, 10-Yr, 2-Yr, Spread, Brent, WTI, G
 # ══════════════════════════════════════════════════════════════════════════
 
 CSS = """<style>
-""" + NETWORKING_CSS + """
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@300;400;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#f0ece4;font-family:'Source Sans 3',Georgia,sans-serif;color:#1a1a1a;font-size:15px;line-height:1.65}
 .wrap{max-width:680px;margin:0 auto;background:#faf8f4}
+/* Header */
 .hdr{background:#0d1b2a;padding:36px 40px 28px;border-bottom:4px solid #c9973a}
 .hdr-label{font-size:10px;font-weight:600;letter-spacing:3.5px;color:#c9973a;text-transform:uppercase;margin-bottom:10px}
 .hdr-title{font-family:'Playfair Display',serif;font-size:34px;font-weight:900;color:#fff;line-height:1.1}
 .hdr-date{font-size:12px;color:#8a9bb0;margin-top:10px;letter-spacing:1px}
 .hdr-sub{font-size:12px;color:#c9973a;margin-top:4px;font-style:italic}
+/* Lead */
 .lead{background:#1a2e42;padding:24px 40px;border-left:4px solid #c9973a}
 .lead p{color:#d4dfe8;font-size:15px;line-height:1.75}
 .lead strong{color:#fff}
+/* Sections */
 .sec{padding:26px 40px;border-bottom:1px solid #e2ddd4}
 .lbl{display:inline-block;font-size:9.5px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#fff;background:#0d1b2a;padding:3px 10px;margin-bottom:14px}
 .lbl.gold{background:#c9973a}.lbl.slate{background:#3d5166}.lbl.green{background:#1e4d2b}
@@ -1270,6 +1230,7 @@ body{background:#f0ece4;font-family:'Source Sans 3',Georgia,sans-serif;color:#1a
 .lbl.purple{background:#4a1942}.lbl.charcoal{background:#2a2a2a}.lbl.rust{background:#8b3a1a}
 .lbl.indigo{background:#2d3561}.lbl.forest{background:#2d4a2d}.lbl.copper{background:#b87333}
 .sec h2{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#0d1b2a;margin-bottom:14px;line-height:1.2}
+/* Stories */
 .story{margin-bottom:20px;padding-bottom:20px;border-bottom:1px dashed #ddd8cf}
 .story:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
 .story-name{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#c9973a;margin-bottom:5px}
@@ -1277,6 +1238,7 @@ body{background:#f0ece4;font-family:'Source Sans 3',Georgia,sans-serif;color:#1a
 .story-body{font-size:13.5px;color:#3a3a3a;line-height:1.65}
 .wwm p{font-size:13.5px;color:#3a3a3a;margin-bottom:8px;line-height:1.65;padding-left:12px;border-left:2px solid #e2ddd4}
 .wwm p strong{color:#0d1b2a}
+/* Market tiles */
 .tile-grid{display:flex;flex-wrap:wrap;gap:0;margin-bottom:16px}
 .tile{flex:1 1 28%;background:#f0ece4;padding:10px 12px;border:1px solid #e2ddd4;margin:3px;border-radius:2px;min-width:130px}
 .tile-lbl{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#8a9bb0;margin-bottom:3px}
@@ -1284,53 +1246,64 @@ body{background:#f0ece4;font-family:'Source Sans 3',Georgia,sans-serif;color:#1a
 .tile-chg{font-size:11px;font-weight:600;margin-top:2px}
 .tile-story{font-size:12px;color:#555;margin-top:4px;line-height:1.4;font-style:italic}
 .up{color:#1e6b35}.down{color:#8b1a1a}.flat{color:#8a9bb0}
+/* Dashboard notes */
 .dash-note{font-size:13px;color:#3a3a3a;margin-top:10px;line-height:1.65;padding:12px 14px;background:#f5f2ec;border-left:3px solid #c9973a}
 .dash-note strong{color:#0d1b2a}
+/* Movers */
 .mv{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed #ddd8cf}
 .mv:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
 .mv-tk{font-weight:600;font-size:13px;color:#0d1b2a;min-width:100px}
 .mv-ch{font-size:13px;font-weight:600;min-width:65px}
 .mv-why{font-size:13px;color:#3a3a3a;flex:1}
+/* X feed */
 .x-signal{margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed #ddd8cf}
 .x-signal:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
 .x-handle{font-size:11px;font-weight:600;color:#1d9bf0;margin-bottom:4px;letter-spacing:0.5px}
 .x-text{font-size:13.5px;color:#3a3a3a;line-height:1.6;margin-bottom:4px}
 .x-why{font-size:12px;color:#666;font-style:italic}
+/* Trend radar */
 .radar-item{margin-bottom:12px;padding-bottom:12px;border-bottom:1px dashed #ddd8cf}
 .radar-item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
 .radar-tag{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
 .radar-tag.escalating{color:#8b1a1a}.radar-tag.stable{color:#3d5166}.radar-tag.resolving{color:#1e6b35}
 .radar-narrative{font-size:13.5px;color:#1a1a1a;margin-bottom:3px}
 .radar-signal{font-size:12px;color:#666;font-style:italic}
+/* Worth watching */
 .watch{display:flex;gap:12px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px dashed #ddd8cf}
 .watch:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
 .watch-num{font-size:18px;font-weight:700;color:#c9973a;font-family:'Playfair Display',serif;min-width:24px}
 .watch-content .watch-item{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#0d1b2a;margin-bottom:3px}
 .watch-content .watch-why{font-size:13px;color:#3a3a3a}
+/* Term box */
 .term-box{background:#0d1b2a;padding:20px 24px;border-radius:3px}
 .term-label{font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#c9973a;margin-bottom:6px}
 .term-word{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#fff;margin-bottom:10px}
 .term-def{font-size:13.5px;color:#d4dfe8;line-height:1.65}
 .term-ctx{font-size:12px;color:#8a9bb0;margin-top:8px;font-style:italic}
+/* One thing */
 .one-thing{background:#1a2e42;padding:22px 28px;border-radius:3px}
 .one-label{font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#c9973a;margin-bottom:8px}
 .one-hed{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#fff;margin-bottom:10px;line-height:1.3}
 .one-body{font-size:13.5px;color:#d4dfe8;line-height:1.75}
+/* Scoreboard */
 .sb{display:flex;flex-wrap:wrap;gap:0;margin-bottom:8px}
 .sb-item{flex:1 1 28%;background:#f0ece4;padding:10px 12px;border:1px solid #e2ddd4;margin:3px;border-radius:2px}
 .sb-lbl{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#8a9bb0;margin-bottom:3px}
 .sb-val{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#0d1b2a}
 .sb-chg{font-size:11px;font-weight:600;margin-top:2px}
 .sb-story{font-size:11px;color:#666;margin-top:3px;font-style:italic}
+/* Saturday themes */
 .theme{background:#f5f2ec;border-left:3px solid #c9973a;padding:14px 18px;margin-bottom:14px;border-radius:0 3px 3px 0}
 .theme:last-child{margin-bottom:0}
 .theme-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:#0d1b2a;margin-bottom:6px}
 .theme-body{font-size:13.5px;color:#3a3a3a;line-height:1.65}
+/* Sat watch */
 .sat-watch{display:flex;gap:14px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed #ddd8cf}
 .sat-watch:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
 .sat-day{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#fff;background:#3d5166;padding:4px 8px;height:fit-content;min-width:36px;text-align:center;border-radius:2px}
 .sat-event{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#0d1b2a;margin-bottom:4px}
 .sat-detail{font-size:13px;color:#3a3a3a}
+/* Bullet cards */
 .bcard{margin-bottom:18px;padding-bottom:18px;border-bottom:1px dashed #ddd8cf}
 .bcard:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
 .bcard-hed{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:#0d1b2a;margin-bottom:8px;line-height:1.3}
@@ -1340,6 +1313,7 @@ body{background:#f0ece4;font-family:'Source Sans 3',Georgia,sans-serif;color:#1a
 .blist li::before{content:"•";position:absolute;left:4px;color:#c9973a;font-weight:700}
 .blist li.sub{padding-left:32px;color:#555;font-size:13px}
 .blist li.sub::before{content:"↳";left:18px;color:#8a9bb0}
+/* Footer */
 .footer{background:#0a1520;padding:16px 40px;text-align:center}
 .footer p{font-size:11px;color:#4a5a6a}
 .footer span{color:#c9973a}
@@ -1364,6 +1338,7 @@ def render_weekday(d):
     tod  = d.get("term_of_the_day", {})
     ot   = d.get("one_thing", {})
 
+    # Market dashboard tiles
     tiles_html = ""
     for tile in md.get("tiles", []):
         cls   = "up" if tile.get("direction")=="up" else ("down" if tile.get("direction")=="down" else "flat")
@@ -1381,6 +1356,7 @@ def render_weekday(d):
     if md.get("macro_snapshot"):
         dashboard_notes += f'<div class="dash-note" style="margin-top:8px"><strong>📊 Macro:</strong> {e(md["macro_snapshot"])}</div>'
 
+    # AI & Compute
     ai_html = ""
     for item in d.get("ai_compute", []):
         bullets = ""
@@ -1397,6 +1373,7 @@ def render_weekday(d):
     if not ai_html:
         ai_html = '<p class="story-body">No major AI developments today.</p>'
 
+    # Earnings
     earnings_html = ""
     for co in me.get("earnings", []):
         bullets = ""
@@ -1416,6 +1393,7 @@ def render_weekday(d):
     if me.get("earnings_preview"):
         earnings_html += f'<p class="story-body" style="margin-top:12px;font-style:italic;color:#666">📅 Coming up: {e(me["earnings_preview"])}</p>'
 
+    # Movers
     movers_html = ""
     for mv in me.get("movers", []):
         cls = "up" if mv.get("direction")=="up" else ("down" if mv.get("direction")=="down" else "flat")
@@ -1426,6 +1404,7 @@ def render_weekday(d):
     if not movers_html:
         movers_html = '<p class="story-body">Market data unavailable.</p>'
 
+    # Deals
     deals_html = ""
     for deal in me.get("deals", []):
         deals_html += f"""<div class="story">
@@ -1436,6 +1415,7 @@ def render_weekday(d):
             <p><strong>Matters:</strong> {e(deal.get('matters',''))}</p>
           </div></div>"""
 
+    # Deal Flow
     df = d.get("deal_flow", {})
 
     def deal_flow_subsection(items, label):
@@ -1475,6 +1455,7 @@ def render_weekday(d):
   {deal_flow_content if deal_flow_content else '<p class="story-body">No major deal activity today.</p>'}
 </div>"""
 
+    # Government & Policy
     policy_html = ""
     for item in gp:
         bullets = ""
@@ -1492,6 +1473,7 @@ def render_weekday(d):
     if not policy_html:
         policy_html = '<p class="story-body">No major policy developments today.</p>'
 
+    # Crypto & Fintech
     crypto_html = ""
     for item in cr:
         bullets = ""
@@ -1509,6 +1491,7 @@ def render_weekday(d):
   {crypto_html if crypto_html else '<p class="story-body">Quiet day in crypto and fintech.</p>'}
 </div>""" if cr else ""
 
+    # Science & Space
     sci_html = ""
     for item in sc:
         bullets = ""
@@ -1526,6 +1509,7 @@ def render_weekday(d):
   {sci_html if sci_html else '<p class="story-body">No major science/space news today.</p>'}
 </div>""" if sc else ""
 
+    # Trending on X
     x_html = ""
     if tx.get("has_content") and tx.get("signals"):
         for sig in tx["signals"]:
@@ -1539,6 +1523,7 @@ def render_weekday(d):
     else:
         x_html = '<p class="story-body">X feed unavailable or quiet today.</p>'
 
+    # Utah
     utah_section = ""
     if utah.get("has_news") and utah.get("bullet_what"):
         u_bullets = f'<li>{e(utah.get("bullet_what",""))}</li>'
@@ -1553,6 +1538,7 @@ def render_weekday(d):
   </div>
 </div>"""
 
+    # Worth Watching
     ww_html = ""
     for i, item in enumerate(ww, 1):
         ww_html += f"""<div class="watch">
@@ -1562,6 +1548,7 @@ def render_weekday(d):
             <div class="watch-why">{e(item.get('why',''))}</div>
           </div></div>"""
 
+    # Trend Radar
     radar_html = ""
     for n in tr.get("narratives", []):
         dir_cls = n.get("direction","stable")
@@ -1573,9 +1560,6 @@ def render_weekday(d):
         </div>"""
     if tr.get("new_this_week"):
         radar_html += f'<p class="story-body" style="margin-top:12px;font-style:italic;color:#666">🆕 New: {e(tr["new_this_week"])}</p>'
-
-    # ── Networking section (Mondays only — returns "" on other days) ─────
-    networking_section = render_networking_section(d.get('networking', {}))
 
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1633,8 +1617,6 @@ def render_weekday(d):
 </div>
 
 {utah_section}
-
-{networking_section}
 
 <div class="sec">
   <div class="lbl teal">Worth Watching</div>
@@ -1844,6 +1826,7 @@ def send_email(subject, html):
 if __name__ == "__main__":
     print(f"\n🌅 Daily Brief v2.0 — {TODAY} ({'Saturday' if IS_SATURDAY else 'Weekday'})\n")
 
+    # Load trend radar
     print("[0/3] Loading trend radar...")
     trend_radar = load_trend_radar()
 
@@ -1866,6 +1849,7 @@ if __name__ == "__main__":
         html = render_weekday(brief)
         send_email(f"☀️ Daily Brief — {NOW.strftime('%a %b %d')}", html)
 
+    # Save updated trend radar
     if brief.get("trend_radar"):
         new_radar = {
             "narratives":    brief["trend_radar"].get("narratives", []),
