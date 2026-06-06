@@ -1084,7 +1084,10 @@ Return a JSON object with EXACTLY these keys:
   "opening": "3-4 sharp sentences: what defined this week, dominant themes, opinionated view on where things stand",
 
   "themes": [
-    {{"title": "Theme title", "body": "3-4 sentences: what happened, why, forward-looking implication"}}
+    {{"title": "Theme title",
+      "what": "One sentence: what happened — specific and factual",
+      "why": "One sentence: why it matters — the implication for markets, policy, or the economy",
+      "watch": "One sentence: what signal to watch for next"}}
   ],
 
   "scoreboard": [
@@ -1313,6 +1316,7 @@ body{background:#f0ece4;font-family:'Source Sans 3',Georgia,sans-serif;color:#1a
 .blist li::before{content:"•";position:absolute;left:4px;color:#c9973a;font-weight:700}
 .blist li.sub{padding-left:32px;color:#555;font-size:13px}
 .blist li.sub::before{content:"↳";left:18px;color:#8a9bb0}
+.blist li strong{color:#0d1b2a;font-weight:600}
 /* Footer */
 .footer{background:#0a1520;padding:16px 40px;text-align:center}
 .footer p{font-size:11px;color:#4a5a6a}
@@ -1361,11 +1365,11 @@ def render_weekday(d):
     for item in d.get("ai_compute", []):
         bullets = ""
         if item.get("bullet_what"):
-            bullets += f'<li>{e(item["bullet_what"])}</li>'
+            bullets += f'<li><strong>What:</strong> {e(item["bullet_what"])}</li>'
         if item.get("bullet_why"):
-            bullets += f'<li class="sub">{e(item["bullet_why"])}</li>'
+            bullets += f'<li class="sub"><strong>Why:</strong> {e(item["bullet_why"])}</li>'
         if item.get("bullet_watch"):
-            bullets += f'<li class="sub">👀 {e(item["bullet_watch"])}</li>'
+            bullets += f'<li class="sub">👀 <strong>Watch for:</strong> {e(item["bullet_watch"])}</li>'
         ai_html += f"""<div class="bcard">
           <div class="bcard-hed">{e(item.get('headline',''))}</div>
           <ul class="blist">{bullets}</ul>
@@ -1378,11 +1382,11 @@ def render_weekday(d):
     for co in me.get("earnings", []):
         bullets = ""
         if co.get("bullet_what"):
-            bullets += f'<li>{e(co["bullet_what"])}</li>'
+            bullets += f'<li><strong>What:</strong> {e(co["bullet_what"])}</li>'
         if co.get("bullet_why"):
-            bullets += f'<li class="sub">{e(co["bullet_why"])}</li>'
+            bullets += f'<li class="sub"><strong>Why:</strong> {e(co["bullet_why"])}</li>'
         if co.get("bullet_watch"):
-            bullets += f'<li class="sub">👀 {e(co["bullet_watch"])}</li>'
+            bullets += f'<li class="sub">👀 <strong>Watch for:</strong> {e(co["bullet_watch"])}</li>'
         earnings_html += f"""<div class="bcard">
           <div class="bcard-meta">{e(co.get('ticker',''))} · {e(co.get('company',''))}</div>
           <div class="bcard-hed">{e(co.get('headline',''))}</div>
@@ -1433,9 +1437,9 @@ def render_weekday(d):
             bw = item.get("bullet_what","")
             by = item.get("bullet_why","")
             if bw:
-                bullets += f'<li>{e(bw)}</li>'
+                bullets += f'<li><strong>What:</strong> {e(bw)}</li>'
             if by:
-                bullets += f'<li class="sub">{e(by)}</li>'
+                bullets += f'<li class="sub"><strong>Why:</strong> {e(by)}</li>'
             html += f"""<div class="bcard">
               <div class="bcard-hed">{e(item.get('headline','') or item.get('company','') or item.get('firm',''))}</div>
               {"<div style='font-size:11px;color:#8a9bb0;margin-bottom:6px'>" + e(meta) + "</div>" if meta else ""}
@@ -1460,11 +1464,11 @@ def render_weekday(d):
     for item in gp:
         bullets = ""
         if item.get("bullet_what"):
-            bullets += f'<li>{e(item["bullet_what"])}</li>'
+            bullets += f'<li><strong>What:</strong> {e(item["bullet_what"])}</li>'
         if item.get("bullet_why"):
-            bullets += f'<li class="sub">{e(item["bullet_why"])}</li>'
+            bullets += f'<li class="sub"><strong>Why:</strong> {e(item["bullet_why"])}</li>'
         if item.get("bullet_watch"):
-            bullets += f'<li class="sub">👀 {e(item["bullet_watch"])}</li>'
+            bullets += f'<li class="sub">👀 <strong>Watch for:</strong> {e(item["bullet_watch"])}</li>'
         policy_html += f"""<div class="bcard">
           <div class="bcard-meta">{e(item.get('tag',''))}</div>
           <div class="bcard-hed">{e(item.get('headline',''))}</div>
@@ -1478,9 +1482,9 @@ def render_weekday(d):
     for item in cr:
         bullets = ""
         if item.get("bullet_what"):
-            bullets += f'<li>{e(item["bullet_what"])}</li>'
+            bullets += f'<li><strong>What:</strong> {e(item["bullet_what"])}</li>'
         if item.get("bullet_why"):
-            bullets += f'<li class="sub">{e(item["bullet_why"])}</li>'
+            bullets += f'<li class="sub"><strong>Why:</strong> {e(item["bullet_why"])}</li>'
         crypto_html += f"""<div class="bcard">
           <div class="bcard-hed">{e(item.get('headline',''))}</div>
           <ul class="blist">{bullets}</ul>
@@ -1496,9 +1500,9 @@ def render_weekday(d):
     for item in sc:
         bullets = ""
         if item.get("bullet_what"):
-            bullets += f'<li>{e(item["bullet_what"])}</li>'
+            bullets += f'<li><strong>What:</strong> {e(item["bullet_what"])}</li>'
         if item.get("bullet_why"):
-            bullets += f'<li class="sub">{e(item["bullet_why"])}</li>'
+            bullets += f'<li class="sub"><strong>Why:</strong> {e(item["bullet_why"])}</li>'
         sci_html += f"""<div class="bcard">
           <div class="bcard-hed">{e(item.get('headline',''))}</div>
           <ul class="blist">{bullets}</ul>
@@ -1526,9 +1530,9 @@ def render_weekday(d):
     # Utah
     utah_section = ""
     if utah.get("has_news") and utah.get("bullet_what"):
-        u_bullets = f'<li>{e(utah.get("bullet_what",""))}</li>'
+        u_bullets = f'<li><strong>What:</strong> {e(utah.get("bullet_what",""))}</li>'
         if utah.get("bullet_why"):
-            u_bullets += f'<li class="sub">{e(utah["bullet_why"])}</li>'
+            u_bullets += f'<li class="sub"><strong>Why:</strong> {e(utah["bullet_why"])}</li>'
         utah_section = f"""<div class="sec">
   <div class="lbl green">Utah &amp; Regional</div>
   <h2>Silicon Slopes &amp; Local Economy</h2>
@@ -1667,9 +1671,19 @@ def render_saturday(d):
 
     themes_html = ""
     for i, t in enumerate(d.get("themes",[]), 1):
+        bullets = ""
+        if t.get("what"):
+            bullets += f'<li><strong>What:</strong> {e(t["what"])}</li>'
+        if t.get("why"):
+            bullets += f'<li class="sub"><strong>Why:</strong> {e(t["why"])}</li>'
+        if t.get("watch"):
+            bullets += f'<li class="sub">👀 <strong>Watch for:</strong> {e(t["watch"])}</li>'
+        # Fallback: if the model still returns an old-style paragraph "body", show it
+        if not bullets and t.get("body"):
+            bullets = f'<li>{e(t["body"])}</li>'
         themes_html += f"""<div class="theme">
           <div class="theme-title">{i}. {e(t.get('title',''))}</div>
-          <div class="theme-body">{e(t.get('body',''))}</div></div>"""
+          <ul class="blist">{bullets}</ul></div>"""
 
     sb_html = '<div class="sb">'
     for item in d.get("scoreboard",[]):
