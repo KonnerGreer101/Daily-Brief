@@ -87,12 +87,25 @@ def fetch_market_data():
             "EURUSD=X": "EUR/USD",
         }
         result = {}
+        # The newsletter sends mid-morning while today's US session is in progress,
+        # so "today's" bar is incomplete. We want the most recent COMPLETED session's
+        # close-to-close move. Use a 7-day window and pick the right two closes.
+        now_et = datetime.now(ZoneInfo("America/New_York"))
+        today_et = now_et.date()
+        market_done_today = now_et.hour >= 16  # ~4pm ET close
         for symbol, name in tickers.items():
             try:
-                hist = yf.Ticker(symbol).history(period="2d")
-                if len(hist) >= 2:
-                    prev = float(hist["Close"].iloc[-2])
-                    curr = float(hist["Close"].iloc[-1])
+                hist = yf.Ticker(symbol).history(period="7d")
+                closes = hist["Close"].dropna()
+                if len(closes) >= 2:
+                    last_is_today = closes.index[-1].date() == today_et
+                    if last_is_today and not market_done_today and len(closes) >= 3:
+                        # today's in-progress bar — recap the prior completed session
+                        curr = float(closes.iloc[-2])
+                        prev = float(closes.iloc[-3])
+                    else:
+                        curr = float(closes.iloc[-1])
+                        prev = float(closes.iloc[-2])
                     pct  = ((curr - prev) / prev) * 100
                     result[symbol] = {
                         "name":       name,
@@ -858,12 +871,10 @@ Return a JSON object with EXACTLY these keys:
   "opening": ["3-5 short bullets, each one punchy line on a defining theme of the day — opinionated, takes a view. NOT a paragraph."],
 
   "market_dashboard": {{
-    "tiles": [
-      {{"name": "asset name", "value": "price or level", "change": "+/-X.X%", "direction": "up/down/flat",
-        "story": "1-2 sentences in plain English explaining what this number means TODAY and why it matters"}}
-    ],
-    "yield_curve_story": "2-3 sentences explaining the yield curve right now — is it inverted? steepening? what does it signal for the economy and markets? If 10-yr is above 4.25%, explain the ripple effects on mortgages, corporate debt, equity multiples, and government interest payments.",
-    "macro_snapshot": "2-3 sentences on the most important FRED data points — CPI trend, unemployment, credit spreads. Plain English, student-friendly."
+    "recap": ["3-5 bullets recapping what happened in the markets in the most recent completed session and WHY — past tense, plain-English, focused on the key themes and biggest moves. If Treasury yields moved meaningfully (or the 10-yr is above 4.25%), one bullet must explain the ripple effects on mortgages, corporate borrowing, and stock valuations in plain terms."],
+    "scoreboard": [
+      {{"name": "asset name", "value": "closing price or level", "change": "+/-X.X%", "direction": "up/down/flat"}}
+    ]
   }},
 
   "ai_compute": [
@@ -980,7 +991,7 @@ Return a JSON object with EXACTLY these keys:
 }}
 
 RULES:
-- market_dashboard tiles: use REAL prices from market data below. Include S&P, Nasdaq, Dow, VIX, 2-Yr, 10-Yr, yield curve spread, WTI, Brent, Gold, Bitcoin. Every tile MUST have a story sentence.
+- market_dashboard: write `recap` as 3-5 plain-English bullets on what happened in the most recent completed session and why (past tense). Fill `scoreboard` using the REAL prices below: S&P, Nasdaq, Dow, VIX, 10-Yr, WTI, Gold, Bitcoin. No story sentences on scoreboard items — keep it clean.
 - ai_compute: 2-4 items, no overlap with markets_economy
 - markets_economy earnings: 2-4 companies. movers: 5-7 using real prices. deals: 1-3 if any real deals.
 - deal_flow: populate each sub-bucket with what's real from the source data. ma: 1-3 deals. vc: 2-4 rounds (prioritize notable size or investor). ipo_listings: 1-3 (include block trades and debt deals when notable). funds_secondaries: 1-2 if any real fund closes or secondaries. Return empty array [] for any sub-bucket with no real content today — never pad.
@@ -1057,7 +1068,7 @@ RULES:
         print("  ❌ JSON recovery failed — returning minimal structure")
         return {
             "opening": "Brief generation encountered an error today. Markets data and key stories were pulled but the summary could not be completed.",
-            "market_dashboard": {"tiles": [], "yield_curve_story": "", "macro_snapshot": ""},
+            "market_dashboard": {"recap": [], "scoreboard": []},
             "ai_compute": [], "markets_economy": {"earnings": [], "movers": [], "deals": [], "earnings_preview": ""},
             "deal_flow": {"ma": [], "vc": [], "ipo_listings": [], "funds_secondaries": []},
             "government_policy": [], "crypto_fintech": [], "science_space": [],
@@ -1196,7 +1207,7 @@ themes=3 | scoreboard: S&P, Nasdaq, Dow, VIX, 10-Yr, 2-Yr, Spread, Brent, WTI, G
         print("  ❌ JSON recovery failed — returning minimal structure")
         return {
             "opening": "Brief generation encountered an error today. Markets data and key stories were pulled but the summary could not be completed.",
-            "market_dashboard": {"tiles": [], "yield_curve_story": "", "macro_snapshot": ""},
+            "market_dashboard": {"recap": [], "scoreboard": []},
             "ai_compute": [], "markets_economy": {"earnings": [], "movers": [], "deals": [], "earnings_preview": ""},
             "deal_flow": {"ma": [], "vc": [], "ipo_listings": [], "funds_secondaries": []},
             "government_policy": [], "crypto_fintech": [], "science_space": [],
@@ -1363,23 +1374,23 @@ def render_weekday(d):
     tod  = d.get("term_of_the_day", {})
     ot   = d.get("one_thing", {})
 
-    # Market dashboard tiles
-    tiles_html = ""
-    for tile in md.get("tiles", []):
-        cls   = "up" if tile.get("direction")=="up" else ("down" if tile.get("direction")=="down" else "flat")
-        story = f'<div class="tile-story">{e(tile.get("story",""))}</div>' if tile.get("story") else ""
-        tiles_html += f"""<div class="tile">
-          <div class="tile-lbl">{e(tile.get('name',''))}</div>
-          <div class="tile-val">{e(tile.get('value',''))}</div>
-          <div class="tile-chg {cls}">{e(tile.get('change',''))}</div>
-          {story}
-        </div>"""
+    # Markets recap — what happened + a simple closing scoreboard
+    recap_html = render_bullets(md.get("recap"))
+    if not recap_html:
+        recap_html = '<p class="story-body">Markets recap unavailable today.</p>'
 
-    dashboard_notes = ""
-    if md.get("yield_curve_story"):
-        dashboard_notes += f'<div class="dash-note"><strong>📈 Yield Curve:</strong> {e(md["yield_curve_story"])}</div>'
-    if md.get("macro_snapshot"):
-        dashboard_notes += f'<div class="dash-note" style="margin-top:8px"><strong>📊 Macro:</strong> {e(md["macro_snapshot"])}</div>'
+    scoreboard_html = ""
+    sb_items = md.get("scoreboard", []) or md.get("tiles", [])  # tolerate old "tiles" key
+    if sb_items:
+        scoreboard_html = '<div class="sb">'
+        for item in sb_items:
+            cls = "up" if item.get("direction")=="up" else ("down" if item.get("direction")=="down" else "flat")
+            scoreboard_html += f"""<div class="sb-item">
+              <div class="sb-lbl">{e(item.get('name',''))}</div>
+              <div class="sb-val">{e(item.get('value','—'))}</div>
+              <div class="sb-chg {cls}">{e(item.get('change',''))}</div>
+            </div>"""
+        scoreboard_html += "</div>"
 
     # AI & Compute
     ai_html = ""
@@ -1594,17 +1605,17 @@ def render_weekday(d):
 <div class="hdr">
   <div class="hdr-label">The Daily Brief</div>
   <div class="hdr-title">Good Morning, Konner.</div>
-  <div class="hdr-date">{e(d.get('date',''))} · Markets open in ~30 min</div>
+  <div class="hdr-date">{e(d.get('date',''))}</div>
   <div class="hdr-sub">Everything you need. Nothing you don't.</div>
 </div>
 
 <div class="lead">{render_bullets(d.get('opening',''), light=True)}</div>
 
 <div class="sec">
-  <div class="lbl slate">Market Dashboard</div>
-  <h2>Pre-Market Snapshot</h2>
-  <div class="tile-grid">{tiles_html}</div>
-  {dashboard_notes}
+  <div class="lbl slate">Markets Recap</div>
+  <h2>What Happened</h2>
+  {recap_html}
+  {f'<div style="margin-top:16px">{scoreboard_html}</div>' if scoreboard_html else ''}
 </div>
 
 <div class="sec">
