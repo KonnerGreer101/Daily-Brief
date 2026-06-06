@@ -855,7 +855,7 @@ def generate_weekday_briefing(data, trend_radar):
 Return a JSON object with EXACTLY these keys:
 
 {{
-  "opening": "3-4 sharp sentences: biggest themes, what kind of morning, what to watch. Opinionated — take a view.",
+  "opening": ["3-5 short bullets, each one punchy line on a defining theme of the day — opinionated, takes a view. NOT a paragraph."],
 
   "market_dashboard": {{
     "tiles": [
@@ -975,7 +975,7 @@ Return a JSON object with EXACTLY these keys:
 
   "one_thing": {{
     "headline": "The developing story worth following",
-    "body": "3-4 sentences: what's happening, why it matters, what the bigger picture could be, what signal to watch for next. This should be the thing Konner can bring up in a coffee chat or interview as a developing thesis."
+    "bullets": ["What's happening (one line)", "Why it matters (one line)", "The bigger picture (one line)", "What signal to watch for next (one line)"]
   }}
 }}
 
@@ -1081,7 +1081,7 @@ Return a JSON object with EXACTLY these keys:
 
 {{
   "week_range": "{week_range}",
-  "opening": "3-4 sharp sentences: what defined this week, dominant themes, opinionated view on where things stand",
+  "opening": ["3-5 short bullets, each one punchy line on what defined this week — opinionated. NOT a paragraph."],
 
   "themes": [
     {{"title": "Theme title",
@@ -1101,17 +1101,20 @@ Return a JSON object with EXACTLY these keys:
     "sector_rotation": "1-2 sentences on what led and what lagged"
   }},
 
-  "ai_week": "2-3 paragraph narrative on the week's biggest AI and tech developments. What's the emerging story?",
+  "ai_week": ["3-5 bullets covering the week's biggest AI and tech developments — each a self-contained point with the development and why it matters. NOT paragraphs."],
 
-  "markets_week": "2-3 paragraph narrative on earnings, deals, and market moves. What story did it tell about the economy?",
+  "markets_week": ["3-5 bullets on the week's earnings, deals, and market moves — each a self-contained point with what happened and what it signals. NOT paragraphs."],
 
   "policy_week": [
-    {{"tag": "Topic", "headline": "Sharp headline", "summary": "3-4 sentences: what happened, why it matters, what to watch"}}
+    {{"tag": "Topic", "headline": "Sharp headline",
+      "what": "One sentence: what happened",
+      "why": "One sentence: why it matters",
+      "watch": "One sentence: what to watch"}}
   ],
 
-  "crypto_week": "1-2 paragraph summary of the week in crypto and fintech. Skip if slow week.",
+  "crypto_week": ["2-4 bullets on the week in crypto and fintech. NOT paragraphs. Empty array if slow week."],
 
-  "science_week": "1-2 paragraph summary of the week's science and space highlights.",
+  "science_week": ["2-4 bullets on the week's science and space highlights. NOT paragraphs."],
 
   "worth_watching": [
     {{"day": "MON/TUE/WED/THU/FRI", "event": "Event name", "detail": "Why it matters"}}
@@ -1133,7 +1136,7 @@ Return a JSON object with EXACTLY these keys:
 
   "one_thing": {{
     "headline": "The week's most important developing story",
-    "body": "3-4 sentences on the bigger picture arc and what to watch next week"
+    "bullets": ["What's happening (one line)", "Why it matters (one line)", "The bigger picture arc (one line)", "What to watch next week (one line)"]
   }}
 }}
 
@@ -1317,6 +1320,9 @@ body{background:#f0ece4;font-family:'Source Sans 3',Georgia,sans-serif;color:#1a
 .blist li.sub{padding-left:32px;color:#555;font-size:13px}
 .blist li.sub::before{content:"↳";left:18px;color:#8a9bb0}
 .blist li strong{color:#0d1b2a;font-weight:600}
+.blist.light li{color:#d4dfe8}
+.blist.light li.sub{color:#a9b8c8}
+.blist.light li strong{color:#fff}
 /* Footer */
 .footer{background:#0a1520;padding:16px 40px;text-align:center}
 .footer p{font-size:11px;color:#4a5a6a}
@@ -1326,6 +1332,21 @@ body{background:#f0ece4;font-family:'Source Sans 3',Georgia,sans-serif;color:#1a
 
 def e(t):
     return str(t).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
+
+
+def render_bullets(val, light=False):
+    """Render a list of strings as a bullet list. If given an old-style
+    paragraph string instead, fall back to a styled paragraph so nothing breaks."""
+    cls = "blist light" if light else "blist"
+    if isinstance(val, list):
+        lis = "".join(f"<li>{e(x)}</li>" for x in val if str(x).strip())
+        if lis:
+            return f'<ul class="{cls}">{lis}</ul>'
+        return ""
+    if val:
+        color = "#d4dfe8" if light else "#3a3a3a"
+        return f'<p style="font-size:14px;line-height:1.75;color:{color}">{e(val)}</p>'
+    return ""
 
 
 def render_weekday(d):
@@ -1577,7 +1598,7 @@ def render_weekday(d):
   <div class="hdr-sub">Everything you need. Nothing you don't.</div>
 </div>
 
-<div class="lead"><p>{e(d.get('opening',''))}</p></div>
+<div class="lead">{render_bullets(d.get('opening',''), light=True)}</div>
 
 <div class="sec">
   <div class="lbl slate">Market Dashboard</div>
@@ -1651,7 +1672,7 @@ def render_weekday(d):
   <div class="one-thing">
     <div class="one-label">Follow This</div>
     <div class="one-hed">{e(ot.get('headline',''))}</div>
-    <div class="one-body">{e(ot.get('body',''))}</div>
+    {render_bullets(ot.get('bullets') if ot.get('bullets') else ot.get('body',''), light=True)}
   </div>
 </div>
 
@@ -1705,10 +1726,19 @@ def render_saturday(d):
 
     policy_html = ""
     for item in d.get("policy_week",[]):
-        policy_html += f"""<div class="story">
-          <div class="story-name">{e(item.get('tag',''))}</div>
-          <div class="story-hed">{e(item.get('headline',''))}</div>
-          <div class="story-body">{e(item.get('summary',''))}</div></div>"""
+        bullets = ""
+        if item.get("what"):
+            bullets += f'<li><strong>What:</strong> {e(item["what"])}</li>'
+        if item.get("why"):
+            bullets += f'<li class="sub"><strong>Why:</strong> {e(item["why"])}</li>'
+        if item.get("watch"):
+            bullets += f'<li class="sub">👀 <strong>Watch for:</strong> {e(item["watch"])}</li>'
+        if not bullets and item.get("summary"):
+            bullets = f'<li>{e(item["summary"])}</li>'
+        policy_html += f"""<div class="bcard">
+          <div class="bcard-meta">{e(item.get('tag',''))}</div>
+          <div class="bcard-hed">{e(item.get('headline',''))}</div>
+          <ul class="blist">{bullets}</ul></div>"""
 
     watch_html = ""
     for item in d.get("worth_watching",[]):
@@ -1743,7 +1773,7 @@ def render_saturday(d):
   <div class="hdr-sub">Read it once, sound sharp all weekend.</div>
 </div>
 
-<div class="lead"><p>{e(d.get('opening',''))}</p></div>
+<div class="lead">{render_bullets(d.get('opening',''), light=True)}</div>
 
 <div class="sec">
   <div class="lbl gold">The Big Picture</div>
@@ -1761,13 +1791,13 @@ def render_saturday(d):
 <div class="sec">
   <div class="lbl charcoal">AI &amp; Compute</div>
   <h2>The Week in Intelligence</h2>
-  <div class="story-body" style="font-size:14px;line-height:1.75;color:#3a3a3a">{e(d.get('ai_week',''))}</div>
+  {render_bullets(d.get('ai_week'))}
 </div>
 
 <div class="sec">
   <div class="lbl gold">Markets &amp; Economy</div>
   <h2>Earnings, Deals &amp; What They Signal</h2>
-  <div class="story-body" style="font-size:14px;line-height:1.75;color:#3a3a3a">{e(d.get('markets_week',''))}</div>
+  {render_bullets(d.get('markets_week'))}
 </div>
 
 <div class="sec">
@@ -1805,7 +1835,7 @@ def render_saturday(d):
   <div class="one-thing">
     <div class="one-label">Follow This</div>
     <div class="one-hed">{e(ot.get('headline',''))}</div>
-    <div class="one-body">{e(ot.get('body',''))}</div>
+    {render_bullets(ot.get('bullets') if ot.get('bullets') else ot.get('body',''), light=True)}
   </div>
 </div>
 
