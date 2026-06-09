@@ -278,6 +278,21 @@ def fetch_nitter_rss(handle, display_name, max_items=5):
                 if pub_dt and pub_dt < cutoff:
                     continue
 
+                # Extract image from post (charts, graphs, screenshots)
+                image_url = ""
+                desc_el = entry.find("description")
+                desc_html = desc_el.text if desc_el is not None and desc_el.text else ""
+                img_match = re.search(r'<img[^>]+src="([^"]+)"', desc_html)
+                if img_match:
+                    src = img_match.group(1)
+                    # Convert Nitter proxy URL to direct pbs.twimg.com URL (more reliable in email)
+                    m = re.search(r'/pic/(?:orig/)?(.+)', src)
+                    if m:
+                        decoded = urllib.parse.unquote(m.group(1))
+                        image_url = f"https://pbs.twimg.com/{decoded}"
+                    else:
+                        image_url = src
+
                 # Clean HTML from title
                 title = re.sub(r'<[^>]+>', '', title).strip()
                 items.append({
@@ -285,6 +300,7 @@ def fetch_nitter_rss(handle, display_name, max_items=5):
                     "description": "",
                     "source":      f"@{handle} ({display_name})",
                     "published":   pub_str[:16],
+                    "image_url":   image_url,
                 })
                 if len(items) >= max_items:
                     break
@@ -585,6 +601,23 @@ def fmt_articles(articles, n=12):
         if len(lines) >= n:
             break
     return "\n".join(lines) if lines else "No articles found."
+
+
+def fmt_x_posts(posts, n=10):
+    """X post list for Claude prompt — flags posts with chart/data images."""
+    if not posts:
+        return "No posts found."
+    seen, lines = set(), []
+    for p in posts:
+        t = p.get("title","").strip()
+        if not t or t in seen:
+            continue
+        seen.add(t)
+        img = f" [HAS IMAGE: {p['image_url']}]" if p.get("image_url") else ""
+        lines.append(f"• [{p.get('source','')}] {t}{img}")
+        if len(lines) >= n:
+            break
+    return "\n".join(lines) if lines else "No posts found."
 
 
 def fmt_market_data(md):
@@ -945,7 +978,8 @@ Return a JSON object with EXACTLY these keys:
     "has_content": true or false,
     "signals": [
       {{"account": "@handle", "signal": "What they said or the meme/take that's trending",
-        "why_it_matters": "Is this onto something real? Explain in 1-2 sentences."}}
+        "why_it_matters": "Is this onto something real? Explain in 1-2 sentences.",
+        "image_url": "If the post has [HAS IMAGE: url], copy that exact URL here — otherwise empty string"}}
     ],
     "x_note": "1 sentence overall read on what the X feed is focused on today"
   }},
@@ -993,7 +1027,7 @@ RULES:
 - government_policy: 2-4 items. SEC/DOJ only if major.
 - crypto_fintech: 1-3 items. Skip if nothing real today — return []
 - science_space: 1-3 items. Skip if nothing real — return []
-- trending_x: use actual posts from the X feed below. If no good posts, set has_content to false and signals to []
+- trending_x: use actual posts from the X feed below. PRIORITIZE quantitative posts — charts, data, market stats (especially anything tagged [HAS IMAGE]) — over pure memes. Aim for a mix weighted toward substance: data posts first, then sharp takes, then at most 1 meme if it tracks something real. When a post has [HAS IMAGE: url], copy that exact URL into image_url. If no good posts, set has_content to false and signals to []
 - utah_regional: ONLY if real specific news — otherwise has_news: false, story: ""
 - worth_watching: exactly 3 items. TODAY IS {TODAY}. ONLY include events that are in the FUTURE — never past events or things that already happened. If a calendar item like "Memorial Day" or any other event has already passed, skip it entirely and pick something genuinely upcoming instead.
 - trend_radar: update from yesterday's narratives + add new ones. day_count should increment from yesterday.
@@ -1031,7 +1065,7 @@ RULES:
 {fmt_articles(data['science'], 7)}
 
 --- TRENDING ON X (curated accounts: Litquidity, Ackman, Chamath, Exec Sum, Geiger Capital, etc.) ---
-{fmt_articles(data.get('x_posts', []), 10)}
+{fmt_x_posts(data.get('x_posts', []), 10)}
 
 --- DEAL FLOW (M&A, VC, IPO, PE, SECONDARIES — Axios Pro Rata, TechCrunch, Reuters, Crunchbase, SEC EDGAR) ---
 {fmt_articles(data.get('deals', []), 12)}
@@ -1520,9 +1554,14 @@ def render_weekday(d):
     x_html = ""
     if tx.get("has_content") and tx.get("signals"):
         for sig in tx["signals"]:
+            img_html = ""
+            img_url = (sig.get("image_url") or "").strip()
+            if img_url.startswith("https://"):
+                img_html = f'<img src="{e(img_url)}" alt="Chart from post" style="max-width:100%;border-radius:8px;margin-top:8px;border:1px solid #e5e5e5" />'
             x_html += f"""<div class="x-signal">
               <div class="x-handle">{e(sig.get('account',''))}</div>
               <div class="x-text">{e(sig.get('signal',''))}</div>
+              {img_html}
               <div class="x-why">{e(sig.get('why_it_matters',''))}</div>
             </div>"""
         if tx.get("x_note"):
