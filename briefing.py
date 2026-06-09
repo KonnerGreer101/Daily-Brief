@@ -842,7 +842,7 @@ MARKET DASHBOARD — STUDENT-FRIENDLY RULES:
 - If 10-yr yield is above 4.25%, flag it explicitly as elevated and explain the ripple effects
 
 SECTION RULES:
-- Each section covers COMPLETELY DIFFERENT stories — zero repetition across sections
+- Each section covers COMPLETELY DIFFERENT stories — zero repetition across sections. A story or deal appears in exactly ONE section, ever. Before writing each section, check what you've already covered and skip anything that would repeat it.
 - Government/Policy: cover broad US governance, major state news, Fed, trade — include SEC/DOJ ONLY if genuinely market-moving (billion-dollar fraud, rate decision, systemic shift)
 - Utah section: ONLY include if there is real, specific local news — skip entirely if nothing material
 - Trending on X: summarize the 3-5 most interesting/relevant signals from the curated feed — include sharp takes, memes with substance, and developing narratives. Flag if a meme account is onto something real.
@@ -871,10 +871,7 @@ Return a JSON object with EXACTLY these keys:
   "opening": ["3-5 short bullets, each one punchy line on a defining theme of the day — opinionated, takes a view. NOT a paragraph."],
 
   "market_dashboard": {{
-    "recap": ["3-5 bullets recapping what happened in the markets in the most recent completed session and WHY — past tense, plain-English, focused on the key themes and biggest moves. If Treasury yields moved meaningfully (or the 10-yr is above 4.25%), one bullet must explain the ripple effects on mortgages, corporate borrowing, and stock valuations in plain terms."],
-    "scoreboard": [
-      {{"name": "asset name", "value": "closing price or level", "change": "+/-X.X%", "direction": "up/down/flat"}}
-    ]
+    "recap": ["3-5 bullets recapping what happened in the markets in the most recent completed session and WHY — past tense, plain-English, focused on the key themes and biggest moves. If Treasury yields moved meaningfully (or the 10-yr is above 4.25%), one bullet must explain the ripple effects on mortgages, corporate borrowing, and stock valuations in plain terms."]
   }},
 
   "ai_compute": [
@@ -894,10 +891,6 @@ Return a JSON object with EXACTLY these keys:
     "movers": [
       {{"name": "Asset", "change": "exact value", "direction": "up/down/flat",
         "reason": "One sentence — connect to catalyst"}}
-    ],
-    "deals": [
-      {{"type": "M&A/IPO/Fundraise", "headline": "Sharp headline",
-        "what": "Deal details", "matters": "Strategic rationale, implied premium, sector signal"}}
     ],
     "earnings_preview": "1-2 sentences on what's reporting later this week"
   }},
@@ -991,9 +984,11 @@ Return a JSON object with EXACTLY these keys:
 }}
 
 RULES:
-- market_dashboard: write `recap` as 3-5 plain-English bullets on what happened in the most recent completed session and why (past tense). Fill `scoreboard` using the REAL prices below: S&P, Nasdaq, Dow, VIX, 10-Yr, WTI, Gold, Bitcoin. No story sentences on scoreboard items — keep it clean.
+- market_dashboard: write `recap` as 3-5 plain-English bullets on what happened in the most recent completed session and why (past tense).
 - ai_compute: 2-4 items, no overlap with markets_economy
-- markets_economy earnings: 2-4 companies. movers: 5-7 using real prices. deals: 1-3 if any real deals.
+- markets_economy earnings: 2-4 companies. movers: 6-8 using the REAL prices below — must include the major closes (S&P, Nasdaq, Dow, VIX, 10-Yr, WTI, Gold, Bitcoin when they moved meaningfully) plus any notable single-stock movers. This is the day's closing picture — there is no separate scoreboard.
+- ALL deals (M&A, IPOs, fundraises) go in deal_flow ONLY — never in markets_economy or any other section.
+- ZERO DUPLICATION: every story appears in exactly ONE section. If the recap already covers the day's big market move (e.g., a yield spike), government_policy must NOT retell it — only include a yields/Fed item there if there is a DISTINCT policy event (Fed decision, speech, auction result), and focus on the policy angle, not the market move.
 - deal_flow: populate each sub-bucket with what's real from the source data. ma: 1-3 deals. vc: 2-4 rounds (prioritize notable size or investor). ipo_listings: 1-3 (include block trades and debt deals when notable). funds_secondaries: 1-2 if any real fund closes or secondaries. Return empty array [] for any sub-bucket with no real content today — never pad.
 - government_policy: 2-4 items. SEC/DOJ only if major.
 - crypto_fintech: 1-3 items. Skip if nothing real today — return []
@@ -1068,8 +1063,8 @@ RULES:
         print("  ❌ JSON recovery failed — returning minimal structure")
         return {
             "opening": "Brief generation encountered an error today. Markets data and key stories were pulled but the summary could not be completed.",
-            "market_dashboard": {"recap": [], "scoreboard": []},
-            "ai_compute": [], "markets_economy": {"earnings": [], "movers": [], "deals": [], "earnings_preview": ""},
+            "market_dashboard": {"recap": []},
+            "ai_compute": [], "markets_economy": {"earnings": [], "movers": [], "earnings_preview": ""},
             "deal_flow": {"ma": [], "vc": [], "ipo_listings": [], "funds_secondaries": []},
             "government_policy": [], "crypto_fintech": [], "science_space": [],
             "trending_x": {"has_content": False, "signals": [], "x_note": ""},
@@ -1207,8 +1202,8 @@ themes=3 | scoreboard: S&P, Nasdaq, Dow, VIX, 10-Yr, 2-Yr, Spread, Brent, WTI, G
         print("  ❌ JSON recovery failed — returning minimal structure")
         return {
             "opening": "Brief generation encountered an error today. Markets data and key stories were pulled but the summary could not be completed.",
-            "market_dashboard": {"recap": [], "scoreboard": []},
-            "ai_compute": [], "markets_economy": {"earnings": [], "movers": [], "deals": [], "earnings_preview": ""},
+            "market_dashboard": {"recap": []},
+            "ai_compute": [], "markets_economy": {"earnings": [], "movers": [], "earnings_preview": ""},
             "deal_flow": {"ma": [], "vc": [], "ipo_listings": [], "funds_secondaries": []},
             "government_policy": [], "crypto_fintech": [], "science_space": [],
             "trending_x": {"has_content": False, "signals": [], "x_note": ""},
@@ -1374,23 +1369,10 @@ def render_weekday(d):
     tod  = d.get("term_of_the_day", {})
     ot   = d.get("one_thing", {})
 
-    # Markets recap — what happened + a simple closing scoreboard
+    # Markets recap — what happened in the prior session
     recap_html = render_bullets(md.get("recap"))
     if not recap_html:
         recap_html = '<p class="story-body">Markets recap unavailable today.</p>'
-
-    scoreboard_html = ""
-    sb_items = md.get("scoreboard", []) or md.get("tiles", [])  # tolerate old "tiles" key
-    if sb_items:
-        scoreboard_html = '<div class="sb">'
-        for item in sb_items:
-            cls = "up" if item.get("direction")=="up" else ("down" if item.get("direction")=="down" else "flat")
-            scoreboard_html += f"""<div class="sb-item">
-              <div class="sb-lbl">{e(item.get('name',''))}</div>
-              <div class="sb-val">{e(item.get('value','—'))}</div>
-              <div class="sb-chg {cls}">{e(item.get('change',''))}</div>
-            </div>"""
-        scoreboard_html += "</div>"
 
     # AI & Compute
     ai_html = ""
@@ -1439,17 +1421,6 @@ def render_weekday(d):
           <span class="mv-why">{e(mv.get('reason',''))}</span></div>"""
     if not movers_html:
         movers_html = '<p class="story-body">Market data unavailable.</p>'
-
-    # Deals
-    deals_html = ""
-    for deal in me.get("deals", []):
-        deals_html += f"""<div class="story">
-          <div class="story-name">{e(deal.get('type',''))}</div>
-          <div class="story-hed">{e(deal.get('headline',''))}</div>
-          <div class="wwm">
-            <p><strong>What:</strong> {e(deal.get('what',''))}</p>
-            <p><strong>Matters:</strong> {e(deal.get('matters',''))}</p>
-          </div></div>"""
 
     # Deal Flow
     df = d.get("deal_flow", {})
@@ -1615,7 +1586,6 @@ def render_weekday(d):
   <div class="lbl slate">Markets Recap</div>
   <h2>What Happened</h2>
   {recap_html}
-  {f'<div style="margin-top:16px">{scoreboard_html}</div>' if scoreboard_html else ''}
 </div>
 
 <div class="sec">
@@ -1626,13 +1596,12 @@ def render_weekday(d):
 
 <div class="sec">
   <div class="lbl gold">Markets &amp; Economy</div>
-  <h2>Earnings, Movers &amp; Deals</h2>
+  <h2>Earnings &amp; Movers</h2>
   {earnings_html}
   <div style="margin-top:20px">
     <div class="story-name" style="margin-bottom:10px">On the Move</div>
     {movers_html}
   </div>
-  {f'<div style="margin-top:20px"><div class="story-name" style="margin-bottom:10px">Deals &amp; Raises</div>{deals_html}</div>' if deals_html else ''}
 </div>
 
 {deal_flow_section}
