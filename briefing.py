@@ -65,6 +65,447 @@ def fmt_trend_radar(radar):
 
 
 # ══════════════════════════════════════════════════════════════════════════
+#  LEARN — sequential curriculum (rotates by weekday, tracks progress)
+# ══════════════════════════════════════════════════════════════════════════
+
+LEARNING_PROGRESS_FILE = "learning_progress.json"
+
+# Each weekday teaches one track. Mon=0 ... Fri=4 (Python's NOW.weekday()).
+WEEKDAY_TRACKS = {
+    0: "Accounting & 3-Statement",
+    1: "Valuation",
+    2: "M&A & Merger Math",
+    3: "LBO & PE",
+    4: "Markets & Deals",
+}
+
+# Vetted, interview-grade curriculum. The AI never writes these — it only adds
+# today's real-world "example" (see learn_example in the prompt). Each card:
+#   concept / what / why / iq+ia (interview Q&A) / tq+ta (test-yourself Q&A)
+# Add cards any time; the index wraps safely at the end of a track.
+CURRICULUM = {
+  "Accounting & 3-Statement": [
+    {"concept":"How the three statements connect",
+     "what":"The income statement (revenue to net income over a period), the balance sheet (assets = liabilities + equity at a point in time), and the cash flow statement (net income adjusted to actual cash) form one linked system. Net income flows into retained earnings and tops the cash flow statement; ending cash returns to the balance sheet.",
+     "why":"Every modeling and accounting question builds on this linkage. If you can't connect the statements fluidly, you can't model or handle follow-ups.",
+     "iq":"Walk me through the three financial statements.",
+     "ia":"Income statement: revenue minus expenses, ending in net income over a period. Balance sheet: assets, liabilities, and equity at a point in time, where assets = liabilities + equity. Cash flow statement: starts with net income, adjusts for non-cash items and working-capital changes across operating, investing, and financing. They link — net income feeds retained earnings on the balance sheet and tops the cash flow statement; ending cash on the CFS becomes the balance-sheet cash line.",
+     "tq":"Net income links which two statements, and what line does it feed on each?",
+     "ta":"It links the income statement to the balance sheet, feeding retained earnings (equity), and it is the starting line of the cash flow statement."},
+    {"concept":"The depreciation walkthrough",
+     "what":"Tracing a single change through all three statements is the classic test of whether you understand the linkages. Depreciation is non-cash, so it lowers taxable income but is added back on the cash flow statement.",
+     "why":"\"Walk an item through the 3 statements\" is asked constantly. Depreciation is the canonical version and the gateway to harder ones.",
+     "iq":"Depreciation increases by $10. Walk it through all three statements (40% tax).",
+     "ia":"Income statement: pre-tax income falls $10; at 40% tax, net income falls $6. Cash flow: net income down $6, add back the $10 non-cash depreciation, so operating cash rises $4 and ending cash is up $4. Balance sheet: cash up $4, PP&E down $10, so assets down $6; retained earnings down $6. It balances.",
+     "tq":"Same $10 depreciation but a 0% tax rate. What happens to ending cash?",
+     "ta":"Nothing — net income falls the full $10, but you add back $10 of depreciation, so operating cash and ending cash are unchanged. On the balance sheet, PP&E down $10 and retained earnings down $10 offset."},
+    {"concept":"Accrual vs cash accounting",
+     "what":"Accrual recognizes revenue when earned and expenses when incurred, regardless of when cash moves. Cash accounting records only when cash changes hands. GAAP uses accrual, which is why the cash flow statement exists.",
+     "why":"It's the root of why net income and cash differ — and most accounting curveballs trace back to this distinction.",
+     "iq":"What's the difference between accrual and cash accounting?",
+     "ia":"Accrual records revenue when earned and expenses when incurred, regardless of cash timing; cash accounting records only actual cash movement. GAAP requires accrual, so the cash flow statement reconciles accrual net income back to real cash.",
+     "tq":"A company books $1M of revenue but collects no cash this quarter. Where does the $1M sit on the balance sheet?",
+     "ta":"In accounts receivable, a current asset. Revenue is recognized under accrual, but until collected it's a receivable, not cash."},
+    {"concept":"Working capital",
+     "what":"Operationally, working capital is receivables plus inventory minus payables — the cash tied up running day-to-day operations. Rising working capital consumes cash.",
+     "why":"It's a key free-cash-flow line and a fast diagnostic: working capital growing faster than revenue is a warning sign.",
+     "iq":"What is working capital and why does it matter?",
+     "ia":"Receivables plus inventory minus payables — the cash tied up in operations. It matters because rising working capital consumes cash, it's a major free-cash-flow line, and it flags trouble if it grows faster than revenue.",
+     "tq":"Receivables jump while revenue is flat. What does that signal, and what's the cash effect?",
+     "ta":"Customers are paying slower, or collections are deteriorating. Rising receivables are a use of working capital, lowering operating cash flow."},
+    {"concept":"Why the cash flow statement is king",
+     "what":"Net income relies on accrual judgments — revenue timing, depreciation methods, reserves — while operating cash flow tracks actual cash, leaving fewer discretionary levers. Cash ultimately determines survival.",
+     "why":"Knowing why cash beats earnings is the mark of someone who reads financials critically, not just mechanically.",
+     "iq":"If you could use only one statement to evaluate a company, which and why?",
+     "ia":"The cash flow statement. It shows actual cash generated, which is harder to manipulate than accrual net income, and cash ultimately determines whether a company can fund itself and survive.",
+     "tq":"Why is net income easier to manipulate than operating cash flow?",
+     "ta":"Net income depends on accrual judgments — revenue recognition timing, depreciation methods, reserves — while operating cash flow tracks real cash, leaving fewer discretionary levers."},
+    {"concept":"Deferred taxes",
+     "what":"A deferred tax liability comes from timing differences between book and tax accounting — classically accelerated depreciation for tax versus straight-line for books. The company pays less tax now, more later.",
+     "why":"DTLs show up in models and on balance sheets; knowing their source signals real accounting depth.",
+     "iq":"Where does a deferred tax liability come from?",
+     "ia":"Timing differences between book and tax accounting — most often accelerated depreciation for tax versus straight-line for books. The company defers tax now and pays more later, and that future obligation sits as a deferred tax liability.",
+     "tq":"Name the classic cause of a deferred tax liability.",
+     "ta":"Accelerated depreciation for tax versus straight-line for books."},
+  ],
+  "Valuation": [
+    {"concept":"The DCF",
+     "what":"A DCF values a company by its future cash flows: project unlevered free cash flows, discount them to today at WACC, add a discounted terminal value, sum to enterprise value, then subtract net debt for equity value.",
+     "why":"The DCF is the backbone of intrinsic valuation and the single most-asked valuation question.",
+     "iq":"Walk me through a DCF. (Aim for 20 seconds.)",
+     "ia":"Project unlevered free cash flows for about five years, discount them to today at WACC, estimate a terminal value (Gordon growth or exit multiple) and discount that back too. Sum for enterprise value, subtract net debt for equity value, divide by shares for value per share.",
+     "tq":"In a DCF, what do you discount unlevered free cash flows at, and what value does that produce?",
+     "ta":"At WACC, which produces enterprise value — before subtracting net debt to reach equity value."},
+    {"concept":"Enterprise value vs equity value",
+     "what":"Equity value is the value to shareholders (market cap). Enterprise value is the value of the operating business to all capital providers: equity value plus debt, preferred, and minority interest, minus cash.",
+     "why":"Mixing these up breaks every multiple and every DCF bridge — it's foundational plumbing.",
+     "iq":"What's the difference between enterprise value and equity value?",
+     "ia":"Equity value is the value to shareholders — market cap. Enterprise value adds debt, preferred, and minority interest and subtracts cash, capturing the whole operating business for all capital providers. EV is capital-structure-neutral, which is why it pairs with EBITDA.",
+     "tq":"A company has $100 equity value, $40 debt, and $10 cash. What's enterprise value?",
+     "ta":"$130 — equity value plus debt minus cash (100 + 40 − 10)."},
+    {"concept":"EV/EBITDA vs P/E",
+     "what":"EV/EBITDA is independent of capital structure and ignores D&A and taxes, so it compares companies with different leverage and asset intensity cleanly. P/E is distorted by leverage and one-time items.",
+     "why":"Choosing the right multiple — and matching numerator to denominator — is core valuation literacy.",
+     "iq":"Why use EV/EBITDA instead of P/E?",
+     "ia":"EV/EBITDA strips out capital structure, D&A, and taxes, so it compares companies with different leverage and asset bases more cleanly; P/E is distorted by leverage and one-time items. EBITDA also proxies pre-tax operating cash flow.",
+     "tq":"Why does EV pair with EBITDA but equity value pair with net income?",
+     "ta":"EBITDA is pre-interest, available to all capital providers, matching EV. Net income is after interest, available to equity only, matching equity value. You must match numerator and denominator by capital claim."},
+    {"concept":"WACC",
+     "what":"WACC is the blended required return of all capital providers: (E/V) × cost of equity + (D/V) × cost of debt × (1 − tax). Cost of equity usually comes from CAPM.",
+     "why":"It's the discount rate in every DCF; understanding what moves it shows you grasp risk and capital structure.",
+     "iq":"What is WACC and how do you calculate it?",
+     "ia":"Weighted average cost of capital — the blended required return across all capital. WACC = (E/V) × cost of equity + (D/V) × cost of debt × (1 − tax rate). Cost of equity typically via CAPM: risk-free + beta × equity risk premium.",
+     "tq":"A company adds cheap debt. What usually happens to WACC, and why only up to a point?",
+     "ta":"WACC usually falls — debt is cheaper than equity and tax-deductible — but only up to a point; too much debt raises default risk and the cost of both debt and equity, pushing WACC back up."},
+    {"concept":"Terminal value",
+     "what":"Terminal value captures everything beyond the explicit forecast. Two methods: Gordon growth (final FCF × (1+g) / (WACC − g)) and the exit-multiple method (terminal EV/EBITDA × final EBITDA).",
+     "why":"Terminal value is often the majority of a DCF's output, so how you compute it matters enormously.",
+     "iq":"How do you calculate terminal value?",
+     "ia":"Two ways. Gordon growth: final-year FCF × (1 + g) ÷ (WACC − g), with g a modest perpetual rate around 2–3%. Exit multiple: apply a terminal EV/EBITDA multiple to final-year EBITDA. Discount the result back to present value.",
+     "tq":"Name the two methods to calculate terminal value.",
+     "ta":"Gordon growth (perpetuity formula) and the exit-multiple method."},
+    {"concept":"The three valuation methodologies",
+     "what":"Comparable companies, precedent transactions, and DCF. Precedent transactions usually print highest because they include control premiums; comps reflect public trading; DCF swings with assumptions.",
+     "why":"Knowing how the methods rank, and why, lets you sanity-check any valuation range.",
+     "iq":"Name the three main valuation methods and how their outputs typically rank.",
+     "ia":"Comparable companies, precedent transactions, and DCF. Precedent transactions usually give the highest values because they embed control premiums; comps reflect current public trading; DCF varies with assumptions. A football-field chart shows the overlapping ranges.",
+     "tq":"Which methodology usually produces the highest valuation, and why?",
+     "ta":"Precedent transactions — they bake in the control premiums paid in past M&A deals."},
+  ],
+  "M&A & Merger Math": [
+    {"concept":"Accretion / dilution basics",
+     "what":"A deal is accretive if it raises the acquirer's EPS and dilutive if it lowers it. The quick all-stock rule: higher acquirer P/E than target P/E means accretive; lower means dilutive.",
+     "why":"Accretion/dilution is the first thing a board asks and a staple of M&A interviews.",
+     "iq":"Walk me through the basic merger math — accretive or dilutive?",
+     "ia":"Compare the cost of acquiring the target's earnings to the acquirer's earnings yield. All-stock rule: if the acquirer's P/E is higher than the target's, it's accretive; if lower, dilutive. For cash or debt deals, compare the after-tax financing cost to the target's earnings yield (E/P).",
+     "tq":"All-stock deal: acquirer P/E 18x, target P/E 22x. Accretive or dilutive?",
+     "ta":"Dilutive — the acquirer's P/E is lower than the target's, so it's buying more expensive earnings than its own; EPS falls."},
+    {"concept":"Stock deal vs asset deal",
+     "what":"In a stock purchase the buyer acquires the legal entity and inherits all assets and liabilities. In an asset purchase the buyer picks specific assets and liabilities and gets a stepped-up tax basis.",
+     "why":"Deal structure drives taxes, liabilities, and who prefers what — a frequent technical and modeling point.",
+     "iq":"Stock deal vs asset deal — what's the difference?",
+     "ia":"A stock purchase takes the whole legal entity with all assets and liabilities. An asset purchase cherry-picks assets and liabilities and gives a stepped-up tax basis (more future depreciation), but transferring contracts is harder. Sellers usually prefer stock deals; buyers often prefer asset deals.",
+     "tq":"Which structure gives the buyer a stepped-up tax basis?",
+     "ta":"An asset deal — the buyer writes assets up to purchase price, creating more future depreciation and tax savings."},
+    {"concept":"The M&A lifecycle players",
+     "what":"Sell-side: target, board, sell-side advisor running the process. Buy-side: acquirer, board, buy-side advisor. Plus lawyers, accountants on diligence, financing providers, and regulators.",
+     "why":"You'll be one of these players soon; knowing the cast and the sequence shows you understand how deals actually run.",
+     "iq":"Walk me through the players in an M&A lifecycle.",
+     "ia":"Sell-side: the target, its board, and its sell-side advisor running the process. Buy-side: the acquirer, its board, and its advisor. Plus lawyers drafting the agreement, accountants on diligence, financing providers, and regulators on antitrust. The flow is origination, diligence, negotiation, signing, regulatory approval, then close.",
+     "tq":"Who runs the sale process on the sell-side, and name two other parties in any deal.",
+     "ta":"The target's sell-side advisor (bank) runs it; others include lawyers, diligence accountants, financing providers, and regulators."},
+    {"concept":"Goodwill",
+     "what":"Goodwill is the premium paid above the fair value of a target's identifiable net assets. Created in an acquisition; tested for impairment, not amortized, under US GAAP.",
+     "why":"It appears in every acquisition model and purchase-price allocation.",
+     "iq":"What is goodwill and when is it created?",
+     "ia":"Goodwill is the premium paid above the fair value of a target's identifiable net assets — purchase price minus fair value of net tangible and identifiable intangible assets. It's created in an acquisition and, under US GAAP, tested for impairment rather than amortized.",
+     "tq":"A buyer pays $500M for a company with $300M fair value of net identifiable assets. How much goodwill?",
+     "ta":"$200M — purchase price minus fair value of net identifiable assets."},
+    {"concept":"Strategic vs financial buyer",
+     "what":"A strategic is an operating company buying for synergies and long-term fit. A financial buyer (PE firm) buys to improve and resell within a few years, relying on leverage.",
+     "why":"It explains why bids differ and who tends to win competitive processes.",
+     "iq":"Why might a strategic buyer pay more than a financial buyer?",
+     "ia":"A strategic can realize synergies — cost and revenue gains from combining operations — that a standalone financial buyer generally can't, which justifies a higher price. Financial buyers rely instead on leverage and operational improvement for returns.",
+     "tq":"Why can a strategic often outbid a PE firm?",
+     "ta":"Synergies — cost and revenue gains only the combined company can capture — let the strategic justify a higher price."},
+    {"concept":"The control premium",
+     "what":"The amount paid above a target's current trading price to gain control. Control lets the buyer set strategy and capital allocation and capture synergies. Typically 20–40%.",
+     "why":"It's the number a board weighs to accept a bid and that shareholders judge to decide if management overpaid.",
+     "iq":"What is the control premium?",
+     "ia":"The amount paid above a target's current trading price to gain control. Control lets the buyer direct strategy, capital allocation, and synergies, which is worth more than a passive minority stake. Premiums typically run 20–40%.",
+     "tq":"Target trades at $40; an acquirer bids $52. What's the control premium?",
+     "ta":"30% — (52 − 40) / 40."},
+  ],
+  "LBO & PE": [
+    {"concept":"Walk me through an LBO",
+     "what":"A PE firm buys a company with mostly debt and some equity, uses the target's cash flows to pay down that debt over about five years while improving operations, then exits via sale or IPO.",
+     "why":"The LBO is the defining PE structure and the most-asked buy-side question.",
+     "iq":"Walk me through an LBO.",
+     "ia":"A PE firm buys a company using mostly debt and some equity. It uses the target's own cash flows to pay down the debt over about five years while improving operations, then exits via a sale or IPO. Returns come from debt paydown, EBITDA growth, and multiple expansion, and the leverage magnifies the equity return.",
+     "tq":"Name the three sources of LBO returns.",
+     "ta":"Debt paydown (deleveraging), EBITDA growth, and multiple expansion."},
+    {"concept":"Why leverage boosts returns",
+     "what":"With less equity in and more debt, the same value creation spreads over a smaller equity base, magnifying the percentage return — and debt is repaid with the company's own cash flow, shifting enterprise value to equity.",
+     "why":"It's the core intuition behind why PE uses leverage at all, and a guaranteed follow-up.",
+     "iq":"Why does leverage boost equity returns in an LBO?",
+     "ia":"Less equity and more debt means the same dollar of value creation is spread over a smaller equity base, magnifying the percentage return. Debt is also paid down with the company's own cash flow, transferring enterprise value to equity over time. The tradeoff is higher risk.",
+     "tq":"In one line, why does more debt magnify equity returns?",
+     "ta":"The same value creation is spread over a smaller equity base, and debt is repaid with the company's own cash flow, shifting enterprise value to equity."},
+    {"concept":"What makes a good LBO candidate",
+     "what":"Stable, predictable cash flows; low existing debt; healthy margins; modest capex; a defensible position; and a clear exit. Cash flow stability matters most because it services the debt.",
+     "why":"It's how sponsors screen targets, and it reveals whether you understand the role of leverage.",
+     "iq":"What makes a good LBO candidate?",
+     "ia":"Stable, predictable cash flows; low existing debt; healthy margins; modest capex; a defensible market position; and room for operational improvement with a clear exit. Cash flow stability matters most, because it services the debt.",
+     "tq":"What single characteristic matters most for an LBO target, and why?",
+     "ta":"Stable, predictable cash flow — it's what services the debt; without it the leverage becomes dangerous."},
+    {"concept":"Return drivers and the paper LBO",
+     "what":"Estimate entry equity (entry EV minus debt), grow EBITDA and pay down debt with free cash flow, then exit EV = exit EBITDA × exit multiple minus remaining debt. Return ≈ exit equity ÷ entry equity.",
+     "why":"The paper LBO is a live, no-spreadsheet test of whether you can actually run the math.",
+     "iq":"How would you do a quick paper LBO?",
+     "ia":"Entry equity = entry enterprise value minus debt. Grow EBITDA and use free cash flow to pay down debt over the hold. Exit EV = exit EBITDA × exit multiple; subtract remaining debt for exit equity. Return ≈ exit equity ÷ entry equity — roughly a 2.5–3x over five years is about a 20–25% IRR.",
+     "tq":"Roughly what IRR is a 3x return over 5 years?",
+     "ta":"About 25% (3x over five years is ~24.6% IRR)."},
+    {"concept":"IRR vs MOIC",
+     "what":"MOIC is total cash returned ÷ invested, ignoring time. IRR is the annualized return that accounts for timing. The same multiple is a far better IRR when achieved faster.",
+     "why":"Sponsors optimize both; understanding the time dimension separates real candidates from memorizers.",
+     "iq":"IRR vs MOIC — how do you think about them?",
+     "ia":"MOIC is total cash returned divided by invested capital, ignoring time. IRR is the annualized return accounting for timing. A 3x in three years is a much better IRR than a 3x in seven. Sponsors watch both — quick exits and dividend recaps boost IRR specifically.",
+     "tq":"Same 3x MOIC — would a sponsor rather hit it in year 3 or year 7, and why?",
+     "ta":"Year 3 — a 3x in three years is a far higher IRR (~44%) than in seven (~17%); faster cash return compounds better."},
+    {"concept":"Multiple expansion",
+     "what":"Exiting at a higher EV/EBITDA multiple than entry. It's the least controllable return lever because it depends on market conditions and sentiment at exit, not operations.",
+     "why":"Leaning on multiple expansion to make a deal work is a red flag interviewers probe for.",
+     "iq":"Of the three LBO return drivers, which is least reliable and why?",
+     "ia":"Multiple expansion — it depends on market conditions at exit, outside the sponsor's control, unlike EBITDA growth and debt paydown, which the sponsor can influence.",
+     "tq":"If you underwrite an 8x entry and an 8x exit, which return driver are you NOT relying on?",
+     "ta":"Multiple expansion — a flat entry/exit multiple means returns come only from EBITDA growth and debt paydown."},
+  ],
+  "Markets & Deals": [
+    {"concept":"Reading a P/E multiple",
+     "what":"A P/E is what investors pay per dollar of annual earnings; inverted, it's the earnings yield. A high multiple implies expected growth, a low one implies skepticism or maturity.",
+     "why":"It's the most common multiple in conversation; reading it fluently is basic market literacy.",
+     "iq":"A stock trades at a 25x P/E. What does that mean in plain terms?",
+     "ia":"Investors are paying $25 for every $1 of annual earnings; inverted, that's a 4% earnings yield. A high multiple signals expectations of strong growth; a low one signals skepticism, or a mature or riskier business.",
+     "tq":"A 25x P/E equals what earnings yield?",
+     "ta":"4% (1 / 25)."},
+    {"concept":"Rates and valuations",
+     "what":"Higher rates raise the discount rate on future cash flows, lowering their present value, so valuations compress — hardest on long-duration, high-growth stocks. Rates also raise borrowing costs and make bonds more competitive.",
+     "why":"This is the single most important macro-to-equity link, and it's behind most market moves you'll narrate.",
+     "iq":"How do rising interest rates affect equity valuations?",
+     "ia":"Higher rates raise the discount rate applied to future cash flows, lowering their present value, so valuations compress — hitting long-duration, high-growth stocks hardest. Rates also raise corporate borrowing costs and make bonds a more competitive alternative to equities.",
+     "tq":"Why do high-growth stocks fall most when rates rise?",
+     "ta":"Their value is weighted toward distant future cash flows (long duration), which get discounted harder as the rate rises."},
+    {"concept":"EBITDA and its critics",
+     "what":"EBITDA is earnings before interest, taxes, depreciation, and amortization — a proxy for operating cash flow. Critics note it ignores real capex and flatters capital-intensive businesses.",
+     "why":"You'll use EBITDA everywhere; knowing its blind spots shows judgment, not just mechanics.",
+     "iq":"What is EBITDA, and why do people criticize it?",
+     "ia":"Earnings before interest, taxes, depreciation, and amortization — a proxy for operating cash flow that strips out capital structure and accounting choices. Critics note it ignores real capex needs and can flatter capital-intensive businesses, so it can overstate true cash generation.",
+     "tq":"What real cost does EBITDA ignore that hurts capital-intensive firms?",
+     "ta":"Capital expenditures (and the related D&A) — EBITDA flatters businesses that must constantly reinvest to operate."},
+    {"concept":"Sponsor vs strategic",
+     "what":"A strategic is an operating company buying for synergies and long-term fit. A sponsor is a financial buyer (PE firm) buying to improve and resell within a few years using leverage.",
+     "why":"It frames how any deal gets valued and who's likely bidding — useful for talking about live deals.",
+     "iq":"Sponsor vs strategic — what's the difference?",
+     "ia":"A strategic is an operating company buying for synergies and long-term fit. A sponsor is a financial buyer, a PE firm, buying to improve and resell within a few years using leverage. They value the same asset differently because their return models differ.",
+     "tq":"Which buyer relies on leverage and a near-term resale?",
+     "ta":"The financial sponsor (PE firm)."},
+    {"concept":"Knowing a live deal cold",
+     "what":"For any deal you raise, have five facts ready: acquirer and target, size, consideration (cash/stock/mix), strategic rationale, and the multiple paid. Then give a view.",
+     "why":"\"Tell me about a recent deal\" is a near-certain prompt; fumbling it signals you don't follow markets.",
+     "iq":"How would you describe a recent deal you've been following?",
+     "ia":"Hit five things: the acquirer and target, the deal size, the consideration (cash, stock, or mix), the strategic rationale, and the multiple paid (e.g. EV/EBITDA). Then give a view on whether it's a smart deal. Never get caught without one ready.",
+     "tq":"Name the five things to have ready about any deal you discuss.",
+     "ta":"Acquirer/target, size, consideration (cash/stock/mix), strategic rationale, and the multiple paid."},
+    {"concept":"Financial acumen: revenue vs cash",
+     "what":"Revenue is recognized when earned under accrual rules, even before payment; cash is what's collected. A company can grow revenue while burning cash if receivables, inventory, or capex swell.",
+     "why":"This literacy underlies P&L fluency and every modeling conversation.",
+     "iq":"How can a profitable company run out of cash?",
+     "ia":"By tying up cash in working capital — rising receivables or inventory — or in heavy capex, while booking accrual profits. Net income is positive but operating cash flow turns negative.",
+     "tq":"Where does booked-but-uncollected revenue sit on the balance sheet?",
+     "ta":"In accounts receivable."},
+  ],
+}
+
+
+# Multiple-choice drill banks, keyed by concept. correct = 0-based index.
+# These are vetted; the AI never writes or alters them.
+QUIZZES = {
+  # ── Accounting & 3-Statement ──
+  "How the three statements connect": [
+    {"q":"Where does net income flow after the income statement?","options":["Into retained earnings on the balance sheet and the top of the cash flow statement","Only into the balance sheet","Only into the cash flow statement","Into goodwill"],"correct":0,"why":"Net income feeds retained earnings (equity) and starts the cash flow statement."},
+    {"q":"The balance sheet equation is:","options":["Assets = Liabilities + Equity","Assets = Liabilities − Equity","Equity = Assets + Liabilities","Revenue = Assets − Liabilities"],"correct":0,"why":"Assets are funded by liabilities and equity, so they equal their sum."},
+    {"q":"Which statement is a point-in-time snapshot rather than a period?","options":["The balance sheet","The income statement","The cash flow statement","None of them"],"correct":0,"why":"The balance sheet is a snapshot; the income and cash flow statements cover a period."},
+  ],
+  "The depreciation walkthrough": [
+    {"q":"$10 of depreciation at a 40% tax rate. Net income:","options":["Falls $6","Falls $10","Falls $4","No change"],"correct":0,"why":"Pre-tax income falls $10; at 40% tax the after-tax hit is $6."},
+    {"q":"In that same case, cash from operations changes by:","options":["+$4","−$6","−$10","$0"],"correct":0,"why":"Net income −$6 plus the $10 non-cash add-back = +$4."},
+    {"q":"On the balance sheet, total assets:","options":["Fall $6 (cash +$4, PP&E −$10)","Fall $10","Rise $4","Are unchanged"],"correct":0,"why":"Cash +$4 and PP&E −$10 net to −$6, matched by retained earnings −$6."},
+  ],
+  "Accrual vs cash accounting": [
+    {"q":"Under accrual accounting, revenue is recognized when:","options":["It is earned, regardless of cash receipt","Cash is received","The invoice is paid","The fiscal year ends"],"correct":0,"why":"Accrual recognizes revenue when earned; collection timing is separate."},
+    {"q":"$1M of revenue booked but uncollected sits in:","options":["Accounts receivable","Cash","Deferred revenue","Retained earnings only"],"correct":0,"why":"Earned-but-uncollected revenue is a receivable."},
+    {"q":"Why does the cash flow statement exist under GAAP?","options":["To reconcile accrual net income back to actual cash","To replace the income statement","To track only financing activities","Because tax law requires it"],"correct":0,"why":"Accrual net income differs from cash; the CFS reconciles them."},
+  ],
+  "Working capital": [
+    {"q":"Operating working capital is roughly:","options":["Receivables + inventory − payables","Current assets + current liabilities","Cash − debt","Assets − equity"],"correct":0,"why":"It's the cash tied up in day-to-day operations."},
+    {"q":"Rising working capital does what to cash?","options":["Consumes it (a use of cash)","Generates it","Has no effect","Increases net income"],"correct":0,"why":"Cash gets tied up in receivables and inventory."},
+    {"q":"Receivables rising while revenue is flat suggests:","options":["Slower collections / a cash drain","Faster growth","Higher margins","Lower leverage"],"correct":0,"why":"Customers are paying slower, draining operating cash."},
+  ],
+  "Why the cash flow statement is king": [
+    {"q":"Which figure is hardest to manipulate?","options":["Operating cash flow","Net income","Revenue","EPS"],"correct":0,"why":"It tracks actual cash, with fewer discretionary levers than accruals."},
+    {"q":"Net income relies on judgments like:","options":["Revenue timing, depreciation method, reserves","Only cash receipts","Share count only","Market price"],"correct":0,"why":"These accrual choices give management discretion."},
+    {"q":"Cash ultimately determines a company's:","options":["Ability to fund itself and survive","Stock ticker","Tax bracket only","Headcount"],"correct":0,"why":"Solvency depends on cash, not accrual profit."},
+  ],
+  "Deferred taxes": [
+    {"q":"A deferred tax liability arises from:","options":["Timing differences between book and tax accounting","Paying tax twice","Foreign currency only","Goodwill impairment"],"correct":0,"why":"Book and tax recognize items on different schedules."},
+    {"q":"The classic cause is:","options":["Accelerated depreciation for tax vs straight-line for books","Higher revenue","Stock buybacks","Dividend payments"],"correct":0,"why":"Tax depreciation runs faster early, deferring tax."},
+    {"q":"A DTL means the company will:","options":["Pay more tax later","Never pay tax","Get a refund","Pay tax twice now"],"correct":0,"why":"It defers tax now and pays it in future periods."},
+  ],
+  # ── Valuation ──
+  "The DCF": [
+    {"q":"In a DCF, unlevered FCF is discounted at:","options":["WACC","Cost of equity","The risk-free rate","The dividend yield"],"correct":0,"why":"Unlevered cash flows belong to all capital providers, so WACC applies."},
+    {"q":"Discounting unlevered FCF produces:","options":["Enterprise value","Equity value","Market cap","Book value"],"correct":0,"why":"It values the whole operating business."},
+    {"q":"To get equity value from enterprise value you:","options":["Subtract net debt","Add net debt","Multiply by shares","Add goodwill"],"correct":0,"why":"Equity value = EV − net debt."},
+  ],
+  "Enterprise value vs equity value": [
+    {"q":"EV = equity value plus ___ minus cash.","options":["Debt (and preferred, minority interest)","Revenue","Goodwill","Receivables"],"correct":0,"why":"EV adds all non-equity capital claims and nets out cash."},
+    {"q":"Equity value $100, debt $40, cash $10. EV =","options":["$130","$150","$70","$110"],"correct":0,"why":"100 + 40 − 10 = 130."},
+    {"q":"EV is preferred for cross-company comparison because it is:","options":["Capital-structure-neutral","Always larger","Tax-free","Based on book value"],"correct":0,"why":"It strips out differences in leverage."},
+  ],
+  "EV/EBITDA vs P/E": [
+    {"q":"EBITDA pairs with EV because EBITDA is:","options":["Pre-interest (available to all capital)","After-tax","Equity-only","Net of capex"],"correct":0,"why":"Both sit above the interest line, so claims match."},
+    {"q":"Net income pairs with:","options":["Equity value (the P in P/E)","Enterprise value","EBITDA","Revenue"],"correct":0,"why":"Net income is equity-only, matching equity value."},
+    {"q":"A reason to prefer EV/EBITDA over P/E:","options":["It removes capital-structure distortion","It includes one-time items","It uses share price only","It ignores revenue"],"correct":0,"why":"It compares operating performance regardless of leverage."},
+  ],
+  "WACC": [
+    {"q":"WACC is:","options":["The blended required return of all capital providers","The cost of equity only","The interest rate on debt","The risk-free rate"],"correct":0,"why":"It weights equity and after-tax debt costs."},
+    {"q":"Cost of equity is usually estimated via:","options":["CAPM","The current ratio","EBITDA margin","Dividend payout"],"correct":0,"why":"CAPM: risk-free + beta × equity risk premium."},
+    {"q":"Adding cheap debt lowers WACC only up to a point because:","options":["Too much debt raises default risk and both costs of capital","Debt is always free","Equity becomes cheaper forever","Taxes disappear"],"correct":0,"why":"Beyond a point, risk pushes WACC back up."},
+  ],
+  "Terminal value": [
+    {"q":"The two terminal value methods are:","options":["Gordon growth and exit multiple","DCF and comps","P/E and P/B","LIFO and FIFO"],"correct":0,"why":"Perpetuity-growth or an exit EV/EBITDA multiple."},
+    {"q":"The Gordon growth formula is:","options":["Final FCF × (1+g) / (WACC − g)","FCF × WACC","EBITDA × multiple − debt","FCF / shares"],"correct":0,"why":"A growing perpetuity discounted at WACC."},
+    {"q":"A reasonable perpetual growth rate is about:","options":["2–3% (near long-run GDP/inflation)","8–10%","0%","Equal to WACC"],"correct":0,"why":"It can't exceed the economy's long-run growth."},
+  ],
+  "The three valuation methodologies": [
+    {"q":"Which usually produces the highest values?","options":["Precedent transactions","Comparable companies","DCF always","Book value"],"correct":0,"why":"They embed control premiums."},
+    {"q":"Precedent transactions run high because they include:","options":["Control premiums","Cash discounts","Tax credits","Lower multiples"],"correct":0,"why":"Past acquirers paid to take control."},
+    {"q":"Comparable companies reflect:","options":["Current public trading levels","Past deal prices","Liquidation value","Replacement cost"],"correct":0,"why":"They mark to where peers trade now."},
+  ],
+  # ── M&A & Merger Math ──
+  "Accretion / dilution basics": [
+    {"q":"All-stock deal, acquirer P/E > target P/E. The deal is:","options":["Accretive","Dilutive","Always neutral","Impossible to tell"],"correct":0,"why":"Buying cheaper earnings than your own raises EPS."},
+    {"q":"Acquirer P/E 18x, target P/E 22x, all stock:","options":["Dilutive","Accretive","Neutral","Cash-only"],"correct":0,"why":"Lower acquirer P/E than target means dilution."},
+    {"q":"For a cash or debt deal, compare the after-tax financing cost to the target's:","options":["Earnings yield (E/P)","P/E","Revenue","Dividend"],"correct":0,"why":"If earnings yield exceeds financing cost, it's accretive."},
+  ],
+  "Stock deal vs asset deal": [
+    {"q":"A stepped-up tax basis comes from a:","options":["Asset deal","Stock deal","All-stock merger","Tender offer"],"correct":0,"why":"Assets are rewritten to purchase price, boosting future depreciation."},
+    {"q":"In a stock purchase the buyer inherits:","options":["All assets and liabilities","Only chosen assets","No liabilities","Only cash"],"correct":0,"why":"You buy the whole legal entity."},
+    {"q":"Sellers usually prefer:","options":["Stock deals","Asset deals","Neither","Block trades"],"correct":0,"why":"Stock deals are cleaner and often better taxed for the seller."},
+  ],
+  "The M&A lifecycle players": [
+    {"q":"Who runs the sale process on the sell-side?","options":["The target's sell-side advisor (bank)","The regulator","The acquirer's CEO","The lender"],"correct":0,"why":"The sell-side bank manages the auction/process."},
+    {"q":"Antitrust review is handled by:","options":["Regulators","The sell-side bank","The accountants","The board only"],"correct":0,"why":"Agencies like the DOJ/FTC review competition."},
+    {"q":"Correct deal sequence:","options":["Origination → diligence → negotiation → signing → approval → close","Close → diligence → signing","Signing → origination → close","Diligence → close → negotiation"],"correct":0,"why":"Deals originate, are diligenced, negotiated, signed, approved, then close."},
+  ],
+  "Goodwill": [
+    {"q":"Goodwill equals:","options":["Purchase price − fair value of net identifiable assets","Purchase price + debt","EBITDA × multiple","Cash paid only"],"correct":0,"why":"It's the premium over identifiable net assets."},
+    {"q":"Pay $500M; net identifiable assets fair value $300M. Goodwill:","options":["$200M","$800M","$300M","$0"],"correct":0,"why":"500 − 300 = 200."},
+    {"q":"Under US GAAP, goodwill is:","options":["Tested for impairment, not amortized","Amortized over 10 years","Expensed immediately","Ignored"],"correct":0,"why":"It stays on the balance sheet, tested for impairment."},
+  ],
+  "Strategic vs financial buyer": [
+    {"q":"A strategic can often pay more because of:","options":["Synergies","Lower taxes always","Free debt","Government subsidies"],"correct":0,"why":"Only the combined company captures synergies."},
+    {"q":"A financial buyer (PE) relies primarily on:","options":["Leverage and operational improvement","Synergies","Brand fit","Vertical integration"],"correct":0,"why":"Returns come from debt and operations, not combination."},
+    {"q":"Synergies are:","options":["Cost/revenue gains only the combined company captures","Always exactly zero","A type of debt","A tax credit"],"correct":0,"why":"They justify a strategic's higher bid."},
+  ],
+  "The control premium": [
+    {"q":"Target $40, bid $52. Control premium:","options":["30%","12%","52%","24%"],"correct":0,"why":"(52 − 40) / 40 = 30%."},
+    {"q":"The premium is paid to gain:","options":["Control over strategy, capital allocation, and synergies","A tax refund","A lower share count","Board seats and nothing else"],"correct":0,"why":"Control is worth more than a passive stake."},
+    {"q":"Typical control premiums run:","options":["20–40%","1–2%","Over 100%","Negative"],"correct":0,"why":"That's the usual observed range."},
+  ],
+  # ── LBO & PE ──
+  "Walk me through an LBO": [
+    {"q":"An LBO is financed mostly with:","options":["Debt","Equity","Grants","Convertible preferred only"],"correct":0,"why":"Leverage is the defining feature."},
+    {"q":"The debt is repaid using:","options":["The target's own cash flows","New equity each year","Government loans","Sponsor dividends"],"correct":0,"why":"The acquired company services its own debt."},
+    {"q":"The three return sources are:","options":["Debt paydown, EBITDA growth, multiple expansion","Dividends, buybacks, splits","Revenue, tax, capex","Comps, DCF, precedents"],"correct":0,"why":"These three drive equity returns."},
+  ],
+  "Why leverage boosts returns": [
+    {"q":"Leverage magnifies equity returns because:","options":["Value creation spreads over a smaller equity base","Debt is free","Taxes rise","Shares increase"],"correct":0,"why":"Less equity means a bigger percentage return per dollar of value."},
+    {"q":"As debt is paid down, enterprise value shifts to:","options":["Equity","Lenders","The government","Goodwill"],"correct":0,"why":"Deleveraging transfers value to equity holders."},
+    {"q":"The tradeoff of high leverage is:","options":["Higher risk if cash flows disappoint","Lower returns","No tax shield","Guaranteed slower growth"],"correct":0,"why":"Debt service becomes dangerous if cash flow falls."},
+  ],
+  "What makes a good LBO candidate": [
+    {"q":"The most important trait of an LBO target:","options":["Stable, predictable cash flow","High growth at any cost","Lots of existing debt","Heavy capex"],"correct":0,"why":"Cash flow services the debt."},
+    {"q":"Why does cash flow stability matter most?","options":["It services the debt","It raises the multiple","It cuts taxes","It boosts revenue"],"correct":0,"why":"Reliable cash keeps the leverage safe."},
+    {"q":"A poor LBO candidate would have:","options":["Volatile cash flows and high capex","Low debt","Strong margins","A clear exit"],"correct":0,"why":"Volatility and capex strain debt service."},
+  ],
+  "Return drivers and the paper LBO": [
+    {"q":"Roughly, a 3x return over 5 years is what IRR?","options":["~25%","~10%","~60%","~5%"],"correct":0,"why":"3^(1/5) − 1 ≈ 24.6%."},
+    {"q":"Entry equity equals:","options":["Entry EV − debt","Entry EV + debt","Exit EV","EBITDA × multiple"],"correct":0,"why":"Equity is what's left after debt funds the purchase."},
+    {"q":"Exit equity equals:","options":["Exit EV − remaining debt","Exit EV + debt","Entry equity × 2","EBITDA only"],"correct":0,"why":"Subtract leftover debt from exit enterprise value."},
+  ],
+  "IRR vs MOIC": [
+    {"q":"MOIC ignores:","options":["Time","Cash","Risk entirely","Leverage"],"correct":0,"why":"It's a simple cash multiple with no time dimension."},
+    {"q":"Same 3x MOIC is a better IRR if achieved in:","options":["3 years vs 7","7 years vs 3","Either — identical","Time never matters"],"correct":0,"why":"Faster cash return compounds to a higher IRR."},
+    {"q":"A dividend recap tends to:","options":["Boost IRR by pulling cash forward","Lower IRR","Not affect returns","Reduce MOIC to zero"],"correct":0,"why":"Earlier cash raises the annualized return."},
+  ],
+  "Multiple expansion": [
+    {"q":"The least controllable LBO return driver is:","options":["Multiple expansion","Debt paydown","EBITDA growth","Cost cuts"],"correct":0,"why":"It depends on the market, not the sponsor."},
+    {"q":"Multiple expansion depends on:","options":["Market conditions at exit","The sponsor's effort","The tax rate","Debt covenants"],"correct":0,"why":"Exit sentiment sets the multiple."},
+    {"q":"Underwriting 8x entry and 8x exit means you rely on:","options":["EBITDA growth and debt paydown","Multiple expansion","Dividends","Tax credits"],"correct":0,"why":"A flat multiple removes expansion from the math."},
+  ],
+  # ── Markets & Deals ──
+  "Reading a P/E multiple": [
+    {"q":"A 25x P/E equals an earnings yield of:","options":["4%","25%","2.5%","40%"],"correct":0,"why":"1 / 25 = 4%."},
+    {"q":"A high P/E typically implies:","options":["Expected growth","Imminent bankruptcy","Low risk always","High dividends"],"correct":0,"why":"Investors pay up for anticipated growth."},
+    {"q":"P/E means investors pay:","options":["$X per $1 of annual earnings","$X per share of revenue","$X per dollar of debt","Book value per share"],"correct":0,"why":"Price divided by earnings per share."},
+  ],
+  "Rates and valuations": [
+    {"q":"Rising rates do what to valuations?","options":["Compress them","Expand them","No effect","Only affect bonds"],"correct":0,"why":"A higher discount rate lowers present values."},
+    {"q":"Which stocks fall most when rates rise?","options":["Long-duration, high-growth","Dividend value stocks","Utilities only","None"],"correct":0,"why":"Their value sits in distant cash flows."},
+    {"q":"Higher rates make ___ more competitive vs equities.","options":["Bonds","Real estate only","Gold only","Crypto"],"correct":0,"why":"Higher yields draw money toward bonds."},
+  ],
+  "EBITDA and its critics": [
+    {"q":"EBITDA stands for earnings before:","options":["Interest, taxes, depreciation, amortization","Investment, trade, debt, assets","Income, total debt, amortization","Interest, time, debt, assets"],"correct":0,"why":"It adds back those four items to operating profit."},
+    {"q":"The main criticism of EBITDA:","options":["It ignores real capex","It double-counts revenue","It overstates taxes","It excludes revenue"],"correct":0,"why":"Capex is a real cash cost it leaves out."},
+    {"q":"EBITDA flatters which businesses?","options":["Capital-intensive ones","Asset-light software","Service firms only","Banks"],"correct":0,"why":"Heavy reinvestment is hidden by EBITDA."},
+  ],
+  "Sponsor vs strategic": [
+    {"q":"Which buyer relies on leverage and a near-term resale?","options":["Financial sponsor (PE)","Strategic","Neither","Both equally"],"correct":0,"why":"PE firms lever up and exit within years."},
+    {"q":"A strategic buys mainly for:","options":["Synergies and long-term fit","A quick flip","Tax losses","Index inclusion"],"correct":0,"why":"Operating fit and synergies drive strategics."},
+    {"q":"They value the same asset differently because:","options":["Their return models differ","One pays cash only","One is illegal","They use the same model"],"correct":0,"why":"Synergy-driven vs leverage-driven returns diverge."},
+  ],
+  "Knowing a live deal cold": [
+    {"q":"How many key facts should you have ready on a deal?","options":["Five: parties, size, consideration, rationale, multiple","Two","Ten","One"],"correct":0,"why":"Those five let you discuss any deal credibly."},
+    {"q":"'Consideration' refers to:","options":["Cash, stock, or a mix","The buyer's CEO","The fairness opinion","The closing date"],"correct":0,"why":"It's how the buyer pays."},
+    {"q":"After the facts, you should give:","options":["A view on whether it's a smart deal","Only the price","The lawyers' names","Nothing"],"correct":0,"why":"Interviewers want your judgment, not just recall."},
+  ],
+  "Financial acumen: revenue vs cash": [
+    {"q":"A profitable company can run out of cash by:","options":["Tying up cash in working capital or capex","Booking too little revenue","Paying no taxes","Issuing stock"],"correct":0,"why":"Accrual profit can mask negative cash flow."},
+    {"q":"Booked-but-uncollected revenue sits in:","options":["Accounts receivable","Cash","Goodwill","Equity"],"correct":0,"why":"It's a receivable until collected."},
+    {"q":"Net income positive but operating cash flow negative signals:","options":["Cash tied up in working capital or capex","Fraud, always","A dividend","Debt repayment"],"correct":0,"why":"Profit isn't converting to cash."},
+  ],
+}
+
+
+def load_learning_progress():
+    try:
+        with open(LEARNING_PROGRESS_FILE, "r") as f:
+            data = json.load(f)
+        if "tracks" not in data:
+            data = {"tracks": {}}
+        return data
+    except:
+        return {"tracks": {}}
+
+def save_learning_progress(progress):
+    try:
+        with open(LEARNING_PROGRESS_FILE, "w") as f:
+            json.dump(progress, f, indent=2)
+        print("  [learning] progress saved")
+    except Exception as ex:
+        print(f"  [learning] save error: {ex}")
+
+def get_todays_lesson(progress):
+    """Today's track by weekday, the next vetted card in it, with its MC drill."""
+    track = WEEKDAY_TRACKS.get(NOW.weekday())
+    if not track:
+        return None
+    cards = CURRICULUM.get(track, [])
+    if not cards:
+        return None
+    idx  = progress.get("tracks", {}).get(track, 0)
+    card = cards[idx % len(cards)]
+    return {
+        "track":      track,
+        "index":      idx,
+        "next_index": idx + 1,
+        "card":       card,
+        "quiz":       QUIZZES.get(card["concept"], []),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════
 #  LAYER 1A — MARKET DATA (yfinance)
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -892,9 +1333,14 @@ OUTPUT: Valid JSON only. No markdown, no preamble, no code fences. Raw JSON obje
 """
 
 
-def generate_weekday_briefing(data, trend_radar):
+def generate_weekday_briefing(data, trend_radar, lesson=None):
     sectors_str  = fmt_sectors(data.get("sectors", []))
     earnings_str = fmt_earnings_calendar(data.get("earnings_cal", []))
+    if not lesson:
+        lesson = get_todays_lesson(load_learning_progress())
+    card           = lesson["card"]
+    lesson_track   = lesson["track"]
+    lesson_concept = card["concept"]
 
     user_prompt = f"""Today is {data['date']}. Write today's Daily Brief.
 
@@ -1005,11 +1451,7 @@ Return a JSON object with EXACTLY these keys:
     "new_this_week": "1 sentence on any new narrative thread emerging today that wasn't in yesterday's radar"
   }},
 
-  "term_of_the_day": {{
-    "term": "Finance or econ term",
-    "definition": "2-3 sentences in plain English — no jargon in the definition itself",
-    "context": "1 sentence connecting this term directly to today's biggest story"
-  }},
+  "learn_example": "1-2 sentences anchoring TODAY'S assigned concept — \"{lesson_concept}\" (track: {lesson_track}) — to a REAL story from today's source data if one cleanly illustrates it; otherwise a crisp, specific hypothetical. Plain English. This is the ONLY part of the lesson you write; definitions and theory are already authored.",
 
   "one_thing": {{
     "headline": "The developing story worth following",
@@ -1031,7 +1473,7 @@ RULES:
 - utah_regional: ONLY if real specific news — otherwise has_news: false, story: ""
 - worth_watching: exactly 3 items. TODAY IS {TODAY}. ONLY include events that are in the FUTURE — never past events or things that already happened. If a calendar item like "Memorial Day" or any other event has already passed, skip it entirely and pick something genuinely upcoming instead.
 - trend_radar: update from yesterday's narratives + add new ones. day_count should increment from yesterday.
-- term_of_the_day: pick the most relevant concept from today's dominant story
+- learn_example: write ONLY the example sentence(s) for today's concept "{lesson_concept}". Prefer a real story from today's source data; if none fits cleanly, use a clear hypothetical. Do not write definitions or theory — those are already authored and must not be duplicated here.
 - one_thing: the single most interesting developing story — something with a bigger picture arc
 
 --- YESTERDAY'S TREND RADAR (update this) ---
@@ -1105,7 +1547,7 @@ RULES:
             "utah_regional": {"has_news": False, "headline": "", "bullet_what": "", "bullet_why": ""},
             "worth_watching": [{"item": "Check back tomorrow", "why": "Brief generation encountered an issue today"}],
             "trend_radar": {"narratives": [], "new_this_week": ""},
-            "term_of_the_day": {"term": "N/A", "definition": "Brief unavailable today.", "context": ""},
+            "learn": {"track": "", "concept": "N/A", "what": "Lesson unavailable today.", "why": "", "example": ""},
             "one_thing": {"headline": "Brief unavailable today", "body": "An error occurred during generation. Check the GitHub Actions log for details."}
         }
 
@@ -1244,7 +1686,7 @@ themes=3 | scoreboard: S&P, Nasdaq, Dow, VIX, 10-Yr, 2-Yr, Spread, Brent, WTI, G
             "utah_regional": {"has_news": False, "headline": "", "bullet_what": "", "bullet_why": ""},
             "worth_watching": [{"item": "Check back tomorrow", "why": "Brief generation encountered an issue today"}],
             "trend_radar": {"narratives": [], "new_this_week": ""},
-            "term_of_the_day": {"term": "N/A", "definition": "Brief unavailable today.", "context": ""},
+            "learn": {"track": "", "concept": "N/A", "what": "Lesson unavailable today.", "why": "", "example": ""},
             "one_thing": {"headline": "Brief unavailable today", "body": "An error occurred during generation. Check the GitHub Actions log for details."}
         }
 
@@ -1400,7 +1842,41 @@ def render_weekday(d):
     utah = d.get("utah_regional", {})
     ww   = d.get("worth_watching", [])
     tr   = d.get("trend_radar", {})
-    tod  = d.get("term_of_the_day", {})
+    ln   = d.get("learn", {})
+    quiz = ln.get("quiz", [])
+    letters = ["A","B","C","D"]
+    learn_quiz_html = ""
+    for i, item in enumerate(quiz, 1):
+        opts = "".join(
+            f'<div style="font-size:13px;color:#0d1b2a;padding:2px 0">{letters[j]}. {e(opt)}</div>'
+            for j, opt in enumerate(item.get("options", []))
+        )
+        learn_quiz_html += (
+            '<div style="margin-top:12px">'
+            f'<div style="font-size:13.5px;color:#0d1b2a;font-weight:600;margin-bottom:5px">Q{i}. {e(item.get("q",""))}</div>'
+            f'{opts}</div>'
+        )
+    answer_key_html = ""
+    for i, item in enumerate(quiz, 1):
+        ci   = item.get("correct", 0)
+        opts = item.get("options", [])
+        correct_txt = opts[ci] if 0 <= ci < len(opts) else ""
+        letter = letters[ci] if 0 <= ci < len(letters) else "?"
+        answer_key_html += (
+            '<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed #ddd8cf">'
+            f'<span style="font-weight:700;color:#0d1b2a">Q{i}: {letter}</span> '
+            f'<span style="color:#3a3a3a">— {e(correct_txt)}</span>'
+            f'<div style="font-size:12.5px;color:#666;margin-top:3px">{e(item.get("why",""))}</div>'
+            '</div>'
+        )
+    answer_key_section = ""
+    if answer_key_html:
+        answer_key_section = (
+            '<div class="sec">'
+            '<div class="lbl charcoal">Answer Key</div>'
+            '<h2>Test Yourself — Answers</h2>'
+            f'{answer_key_html}</div>'
+        )
     ot   = d.get("one_thing", {})
 
     # Markets recap — what happened in the prior session
@@ -1675,13 +2151,24 @@ def render_weekday(d):
 </div>
 
 <div class="sec">
-  <div class="lbl charcoal">Finance Vocab</div>
-  <h2>Term of the Day</h2>
+  <div class="lbl charcoal">Learn</div>
+  <h2>Build Your Edge</h2>
   <div class="term-box">
-    <div class="term-label">Today's Concept</div>
-    <div class="term-word">{e(tod.get('term',''))}</div>
-    <div class="term-def">{e(tod.get('definition',''))}</div>
-    <div class="term-ctx">{e(tod.get('context',''))}</div>
+    <div class="term-label">Today's Lesson · {e(ln.get('track',''))}</div>
+    <div class="term-word">{e(ln.get('concept',''))}</div>
+    <div class="term-def">{e(ln.get('what',''))}</div>
+    <div class="term-ctx" style="margin-top:10px"><strong style="color:#c9973a">Why it matters:</strong> {e(ln.get('why',''))}</div>
+    <div class="term-ctx" style="margin-top:6px"><strong style="color:#c9973a">In practice:</strong> {e(ln.get('example',''))}</div>
+  </div>
+  <div style="margin-top:14px;padding:14px 16px;background:#f5f2ec;border-left:3px solid #0d1b2a;border-radius:0 3px 3px 0">
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0d1b2a;margin-bottom:6px">Interview angle</div>
+    <div style="font-size:13px;color:#3a3a3a;line-height:1.6;font-weight:600;margin-bottom:5px">{e(ln.get('interview_q',''))}</div>
+    <div style="font-size:13px;color:#3a3a3a;line-height:1.65">{e(ln.get('interview_a',''))}</div>
+  </div>
+  <div style="margin-top:12px;padding:14px 16px;border:1px dashed #c9973a;border-radius:4px;background:#fbf6ec">
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#a9772a;margin-bottom:4px">Test yourself</div>
+    <div style="font-size:12px;color:#8a7a55;font-style:italic">Answers are at the very bottom of today's brief.</div>
+    {learn_quiz_html}
   </div>
 </div>
 
@@ -1694,6 +2181,8 @@ def render_weekday(d):
     {render_bullets(ot.get('bullets') if ot.get('bullets') else ot.get('body',''), light=True)}
   </div>
 </div>
+
+{answer_key_section}
 
 <div class="footer">
   <p>The Daily Brief · Built for <span>Konner Greer</span> · University of Utah, Finance &amp; Fintech '27</p>
@@ -1892,6 +2381,8 @@ if __name__ == "__main__":
     # Load trend radar
     print("[0/3] Loading trend radar...")
     trend_radar = load_trend_radar()
+    learning_progress = load_learning_progress()
+    lesson = None
 
     if IS_SATURDAY:
         print("[1/3] Gathering week's data...")
@@ -1905,9 +2396,24 @@ if __name__ == "__main__":
         send_email(f"📊 Weekly Brief — Week of {mon.strftime('%b %d')}–{fri.strftime('%b %d')}", html)
     else:
         print("[1/3] Gathering today's data...")
+        lesson = get_todays_lesson(learning_progress)
+        if lesson:
+            print(f"  [learning] today's lesson — {lesson['track']}: {lesson['card']['concept']}")
         data = gather_weekday_data()
         print("\n[2/3] Claude writing today's briefing...")
-        brief = generate_weekday_briefing(data, trend_radar)
+        brief = generate_weekday_briefing(data, trend_radar, lesson)
+        if lesson:
+            card = lesson["card"]
+            brief["learn"] = {
+                "track":       lesson["track"],
+                "concept":     card["concept"],
+                "what":        card["what"],
+                "why":         card["why"],
+                "example":     brief.get("learn_example", ""),
+                "interview_q": card["iq"],
+                "interview_a": card["ia"],
+                "quiz":        lesson.get("quiz", []),
+            }
         print("\n[3/3] Rendering & sending...")
         html = render_weekday(brief)
         send_email(f"☀️ Daily Brief — {NOW.strftime('%a %b %d')}", html)
@@ -1919,5 +2425,10 @@ if __name__ == "__main__":
             "last_updated":  TODAY,
         }
         save_trend_radar(new_radar)
+
+    # Advance learning progress after a successful weekday run
+    if lesson and brief.get("learn_example"):
+        learning_progress.setdefault("tracks", {})[lesson["track"]] = lesson["next_index"]
+        save_learning_progress(learning_progress)
 
     print("\n✅ Done!\n")
