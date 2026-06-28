@@ -71,12 +71,21 @@ def fmt_trend_radar(radar):
 LEARNING_PROGRESS_FILE = "learning_progress.json"
 
 # Each weekday teaches one track. Mon=0 ... Fri=4 (Python's NOW.weekday()).
-WEEKDAY_TRACKS = {
-    0: "Accounting & 3-Statement",
-    1: "Valuation",
-    2: "M&A & Merger Math",
-    3: "LBO & PE",
-    4: "Markets & Deals",
+# 13-week curriculum schedule: week number → track
+WEEK_TRACK_SCHEDULE = {
+    1:  "Accounting & 3-Statement",
+    2:  "Accounting & 3-Statement",
+    3:  "Valuation",
+    4:  "Valuation",
+    5:  "M&A & Merger Math",
+    6:  "M&A & Merger Math",
+    7:  "LBO & PE",
+    8:  "LBO & PE",
+    9:  "Markets & Deals",
+    10: "Markets & Deals",
+    11: "Markets & Deals",
+    12: "Markets & Deals",
+    13: "Markets & Deals",
 }
 
 # Vetted, interview-grade curriculum. The AI never writes these — it only adds
@@ -487,17 +496,17 @@ def save_learning_progress(progress):
         print(f"  [learning] save error: {ex}")
 
 def get_todays_lesson(progress):
-    """Today's track by weekday, the next vetted card in it, with its MC drill."""
-    track = WEEKDAY_TRACKS.get(NOW.weekday())
-    if not track:
-        return None
+    """Current week's track, next vetted card in sequence, with its MC drill."""
+    week = progress.get("week", 1)
+    track = WEEK_TRACK_SCHEDULE.get(week) or WEEK_TRACK_SCHEDULE[13]
     cards = CURRICULUM.get(track, [])
     if not cards:
         return None
-    idx  = progress.get("tracks", {}).get(track, 0)
+    idx = progress.get("tracks", {}).get(track, 0)
     card = cards[idx % len(cards)]
     return {
         "track":      track,
+        "week":       week,
         "index":      idx,
         "next_index": idx + 1,
         "card":       card,
@@ -2428,7 +2437,17 @@ if __name__ == "__main__":
 
     # Advance learning progress after a successful weekday run
     if lesson and brief.get("learn_example"):
-        learning_progress.setdefault("tracks", {})[lesson["track"]] = lesson["next_index"]
+        tracks = learning_progress.setdefault("tracks", {})
+        track = lesson["track"]
+        new_card_idx = lesson["next_index"]
+        track_cards = CURRICULUM.get(track, [])
+        current_week = learning_progress.get("week", 1)
+        next_week = current_week
+        if new_card_idx >= len(track_cards):
+            next_week = current_week + 1
+            new_card_idx = 0
+        tracks[track] = new_card_idx
+        learning_progress["week"] = next_week
         save_learning_progress(learning_progress)
 
     print("\n✅ Done!\n")
