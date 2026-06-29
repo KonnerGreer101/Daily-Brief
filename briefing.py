@@ -681,6 +681,7 @@ X_ACCOUNTS = {
     "Jason":           "Jason Calacanis",
     "chamath":         "Chamath",
     "Geiger_Capital":  "Geiger Capital",
+    "CompoundingW":    "Compounding W",
 }
 
 # Public Nitter instances — tries each until one works
@@ -1700,6 +1701,98 @@ themes=3 | scoreboard: S&P, Nasdaq, Dow, VIX, 10-Yr, 2-Yr, Spread, Brent, WTI, G
         }
 
 
+
+# ==========================================================================
+#  LAYER 2B - STUDY TOOL GENERATOR
+# ==========================================================================
+
+STUDY_TOOL_FILE = "study/index.html"
+
+STUDY_SYSTEM_PROMPT = (
+    "You are a finance education designer. Create a rich, visual HTML study page for a finance student. "
+    "Output must be a complete self-contained HTML page with embedded CSS. No external dependencies except Google Fonts. "
+    "Design: color-coded sections, bold headers, key takeaways boxed at bottom. "
+    "Style: infographic-style finance education - clean, scannable, visually engaging like a premium finance poster. "
+    "Output raw HTML only - no markdown, no preamble, no code fences."
+)
+
+
+def generate_study_tool(lesson, learn_example):
+    if not lesson:
+        return None
+    card = lesson["card"]
+    track = lesson["track"]
+    week = lesson.get("week", 1)
+    concept = card["concept"]
+    quiz = lesson.get("quiz", [])
+    quiz_json = json.dumps(quiz)
+
+    w = card['what']; wy = card['why']; iq = card['iq']; ia = card['ia']; tq = card['tq']; ta = card['ta']
+    prompt = (
+        f"Create a complete HTML study page for this finance concept. Rich, visual, infographic-style.\n\n"
+        f"CONCEPT: {concept}\n"
+        f"TRACK: {track} (Week {week} of 13)\n"
+        f"WHAT IT IS: {w}\n"
+        f"WHY IT MATTERS: {wy}\n"
+        f"REAL-WORLD EXAMPLE: {learn_example}\n"
+        f"INTERVIEW QUESTION: {iq}\n"
+        f"MODEL ANSWER: {ia}\n"
+        f"SELF-TEST QUESTION: {tq}\n"
+        f"SELF-TEST ANSWER: {ta}\n"
+        f"QUIZ JSON: {quiz_json}\n\n"
+        "DESIGN REQUIREMENTS:\n"
+        "- Full HTML page with DOCTYPE, head, body. Embedded CSS only. Google Fonts: Playfair Display + Source Sans 3.\n"
+        "- Colors: #0d1b2a navy, #c9973a gold, #1a2e42 dark blue, #f0ece4 cream bg, #1e4d2b green, #8b1a1a red.\n"
+        "- HEADER: Concept name large in Playfair Display. Track + Week badge.\n"
+        "- SECTION 1 - WHAT IS IT: Color-coded visual breakdown. For each sub-component show a colored card with name, what it shows, key question it answers. Make it look like an infographic table with Statement / What it shows / Key question columns.\n"
+        "- SECTION 2 - WHY IT MATTERS: Gold accent left-border box. 3-4 expanding bullet points.\n"
+        "- SECTION 3 - REAL-WORLD CONNECTION: Navy bg box. Real-world example connecting concept to current events.\n"
+        "- SECTION 4 - INTERVIEW PREP: Two column layout. Left: question in slate box. Right: model answer broken into numbered steps.\n"
+        "- SECTION 5 - QUICK DRILL: Interactive quiz. Each question shows 4 clickable answer buttons. On click: correct turns green + shows explanation, wrong turns red. Vanilla JS only.\n"
+        "- SECTION 6 - KEY TAKEAWAYS: Gold/navy bottom banner. 3-4 crisp memory bullets.\n"
+        f"- FOOTER: The Daily Brief - Study Desk - Week {week} of 13 - {track}\n"
+        "- Mobile responsive, max-width 800px centered.\n"
+        "- Make it look like a premium finance education infographic poster - bold colored section header bands, clear visual hierarchy."
+    )
+
+    try:
+        payload = json.dumps({
+            "model": "claude-opus-4-5",
+            "max_tokens": 6000,
+            "system": STUDY_SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": prompt}]
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=payload,
+            headers={
+                "x-api-key": ANTHROPIC_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            }
+        )
+        with urllib.request.urlopen(req, timeout=180) as r:
+            data = json.loads(r.read().decode())
+        html = data["content"][0]["text"].strip()
+        html = html.lstrip("```html").lstrip("```").rstrip("```").strip()
+        return html
+    except Exception as ex:
+        print(f"  [study tool] generation error: {ex}")
+        return None
+
+
+def save_study_tool(html):
+    import os
+    os.makedirs("study", exist_ok=True)
+    try:
+        with open(STUDY_TOOL_FILE, "w", encoding="utf-8") as f:
+            f.write(html)
+        print(f"  [study tool] saved to {STUDY_TOOL_FILE}")
+        return True
+    except Exception as ex:
+        print(f"  [study tool] save error: {ex}")
+        return False
+
 # ══════════════════════════════════════════════════════════════════════════
 #  LAYER 3 — HTML EMAIL RENDERER
 # ══════════════════════════════════════════════════════════════════════════
@@ -2196,6 +2289,7 @@ def render_weekday(d):
 <div class="footer">
   <p>The Daily Brief · Built for <span>Konner Greer</span> · University of Utah, Finance &amp; Fintech '27</p>
   <p style="margin-top:4px">Delivered every weekday at 7:00 AM MT · <span>Markets open at 7:30 AM MT</span></p>
+  <p style="margin-top:8px"><a href="https://konnergreer101.github.io/Daily-Brief/study" style="color:#c9973a;font-weight:600;text-decoration:none;">📚 Open Today's Study Lesson →</a></p>
 </div>
 
 </div></body></html>"""
@@ -2424,6 +2518,13 @@ if __name__ == "__main__":
                 "quiz":        lesson.get("quiz", []),
             }
         print("\n[3/3] Rendering & sending...")
+        # Generate study tool page
+        study_html = None
+        if lesson and brief.get("learn_example"):
+            print("  → Generating study tool...")
+            study_html = generate_study_tool(lesson, brief.get("learn_example", ""))
+            if study_html:
+                save_study_tool(study_html)
         html = render_weekday(brief)
         send_email(f"☀️ Daily Brief — {NOW.strftime('%a %b %d')}", html)
 
