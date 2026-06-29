@@ -38,10 +38,10 @@ jobs:
           GOOGLE_CSE_CX:          ${{ secrets.GOOGLE_CSE_CX }}
         run: python briefing.py
 
-      - name: Commit updated trend radar
+      - name: Commit updated files
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "Daily Brief Bot"
-          git add trend_radar.json seen_contacts.json learning_progress.json || true
-          git diff --staged --quiet || git commit -m "Update trend radar [skip ci]"
+          git add trend_radar.json seen_contacts.json learning_progress.json study/index.html || true
+          git diff --staged --quiet || git commit -m "Update brief + study tool [skip ci]"
           git push || true
