@@ -4,7 +4,7 @@ Rebuilt with All-In inspired structure
 Weekdays at 7:00 AM MT  |  Saturday at 8:00 AM MT
 """
 
-import os, json, smtplib, urllib.request, urllib.parse, xml.etree.ElementTree as ET, re
+import os, json, smtplib, time, urllib.request, urllib.parse, xml.etree.ElementTree as ET, re
 from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -1282,7 +1282,7 @@ def gather_saturday_data():
 #  LAYER 2 — CLAUDE AGENT
 # ══════════════════════════════════════════════════════════════════════════
 
-def call_claude(system_prompt, user_prompt, max_tokens=5000):
+def call_claude(system_prompt, user_prompt, max_tokens=5000, max_retries=3):
     payload = json.dumps({
         "model": "claude-opus-4-5",
         "max_tokens": max_tokens,
@@ -1298,14 +1298,22 @@ def call_claude(system_prompt, user_prompt, max_tokens=5000):
             "content-type": "application/json",
         }
     )
-    try:
-        with urllib.request.urlopen(req, timeout=180) as r:
-            data = json.loads(r.read().decode())
-        return data["content"][0]["text"]
-    except urllib.error.HTTPError as ex:
-        body = ex.read().decode()
-        print(f"  Anthropic error {ex.code}: {body}")
-        raise
+    retry_codes = {529, 429, 500, 502, 503}
+    delays = [10, 30, 60]
+    for attempt in range(max_retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=180) as r:
+                data = json.loads(r.read().decode())
+            return data["content"][0]["text"]
+        except urllib.error.HTTPError as ex:
+            body = ex.read().decode()
+            print(f"  Anthropic error {ex.code}: {body}")
+            if ex.code in retry_codes and attempt < max_retries:
+                wait = delays[attempt]
+                print(f"  Retrying in {wait}s (attempt {attempt + 1}/{max_retries})...")
+                time.sleep(wait)
+                continue
+            raise
 
 
 SYSTEM_PROMPT = """You are the writer of "The Daily Brief" — a personal morning newsletter for Konner Greer, a Finance & Fintech student at the University of Utah (graduating December 2027). He interns at University of Utah Financial Services and is building toward a career in finance, fintech, or financial regulation.
