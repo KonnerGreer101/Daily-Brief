@@ -19,7 +19,8 @@
     "eia:Natural gas storage (Bcf)": "2026-09-18"
   },
   "sent": {
-    "morning": "2026-09-29"
+    "morning": "2026-09-29",
+    "close": "2026-09-29"
   },
   "morning_headlines": {
     "2026-09-29": [
@@ -40,5 +41,5 @@
       "Fed's Barr Speaks on Economic Conditions; Waller Addresses AI in Payments"
     ]
   },
-  "last_run": "2026-09-29T22:19:13+00:00"
+  "last_run": "2026-09-29T22:34:00+00:00"
 }
