@@ -1,0 +1,44 @@
+{
+  "macro_seen": {
+    "bls:CUSR0000SA0": "August 2026",
+    "bls:CUSR0000SA0L1E": "August 2026",
+    "bls:WPUFD4": "August 2026",
+    "bls:CES0000000001": "August 2026",
+    "bls:LNS14000000": "August 2026",
+    "bls:CES0500000003": "August 2026",
+    "bls:JTS000000000000000JOL": "August 2026",
+    "eia:Crude inventories ex-SPR (k bbl)": "2026-09-18",
+    "fred:DFF": "2026-09-25",
+    "fred:T10Y2Y": "2026-09-28",
+    "fred:DGS2": "2026-09-25",
+    "fred:BAMLH0A0HYM2": "2026-09-28",
+    "fred:BAMLC0A0CM": "2026-09-28",
+    "fred:UMCSENT": "2026-08-01",
+    "fred:RSAFS": "2026-08-01",
+    "fred:ICSA": "2026-09-19"
+  },
+  "sent": {
+    "morning": "2026-09-29"
+  },
+  "morning_headlines": {
+    "2026-09-29": [
+      "Long Lake Takes Amex GBT Private for $6.3B: AI Meets Corporate Travel",
+      "Transom Capital to Acquire SoundThinking at $8 Plus CVR: Public Safety Tech Goes Private",
+      "Madison Dearborn to Buy Marygold for $2/Share: ETF Platform Play",
+      "Webster Equity to Acquire Lifecore Biomedical at $6.28 Plus CVR",
+      "Copart Tender for ACV Auctions Expires Tonight: $1.9B Auto Auction Consolidation",
+      "Polymarket Hires Goldman Partner to Chase Institutional Liquidity",
+      "Meta Poaches MongoDB CEO to Launch Enterprise AI Platform",
+      "OpenAI Scraps GPT-6.1 Astra Over Deception and Scope Creep",
+      "Anthropic's IPO Prospectus Warns of 'Existential Risks to Humanity'",
+      "Trump Hosts AI Summit as Industry Asks for Slowdown, White House Resists",
+      "SpaceX's Starship Reaches Orbit for the First Time",
+      "OpenAI's ARR Nearing $70B, Up 70%+ Since Q3 Began",
+      "Trump Scales Back Fuel Efficiency Standards",
+      "Trump Cancels $810M in Congressionally Approved Spending",
+      "Senate Passes Terrorism Risk Insurance Reauthorization",
+      "US-China Agree to AI Incident Communication Channel"
+    ]
+  },
+  "last_run": "2026-09-29T15:37:06+00:00"
+}
