@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How the Three Statements Connect | The Daily Brief</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #0d1b2a;
+            --gold: #c9973a;
+            --dark-blue: #1a2e42;
+            --cream: #f0ece4;
+            --green: #1e4d2b;
+            --red: #8b1a1a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: linear-gradient(135deg, #e8e4dc 0%, var(--cream) 50%, #e8e4dc 100%);
+            color: var(--navy);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--dark-blue) 100%);
+            padding: 40px 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(201, 151, 58, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(201, 151, 58, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .badge {
+            display: inline-block;
+            background: var(--gold);
+            color: var(--navy);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: white;
+            line-height: 1.2;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 span {
+            color: var(--gold);
+        }
+
+        .header-subtitle {
+            color: rgba(255,255,255,0.7);
+            font-size: 1.1rem;
+            margin-top: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Section Headers */
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .section-number {
+            background: var(--gold);
+            color: var(--navy);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        /* What Is It Section */
+        .infographic-grid {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(13, 27, 42, 0.1);
+        }
+
+        .infographic-header {
+            display: grid;
+            grid-template-columns: 1.2fr 1.5fr 1.3fr;
+            background: var(--navy);
+            color: white;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .infographic-header div {
+            padding: 15px;
+            text-align: center;
+        }
+
+        .statement-row {
+            display: grid;
+            grid-template-columns: 1.2fr 1.5fr 1.3fr;
+            border-bottom: 1px solid rgba(13, 27, 42, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .statement-row:last-child {
+            border-bottom: none;
+        }
+
+        .statement-row:hover {
+            background: rgba(201, 151, 58, 0.05);
+        }
+
+        .statement-name {
+            padding: 20px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+
+        .statement-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .income-icon {
+            background: linear-gradient(135deg, #1e4d2b 0%, #2d6b3f 100%);
+            color: white;
+        }
+
+        .balance-icon {
+            background: linear-gradient(135deg, #0d1b2a 0%, #1a2e42 100%);
+            color: white;
+        }
+
+        .cashflow-icon {
+            background: linear-gradient(135deg, #c9973a 0%, #d4a84b 100%);
+            color: white;
+        }
+
+        .statement-desc {
+            padding: 20px 15px;
+            font-size: 0.95rem;
+            color: var(--dark-blue);
+            border-left: 1px solid rgba(13, 27, 42, 0.1);
+        }
+
+        .statement-question {
+            padding: 20px 15px;
+            font-size: 0.9rem;
+            font-style: italic;
+            color: var(--gold);
+            font-weight: 600;
+            border-left: 1px solid rgba(13, 27, 42, 0.1);
+            background: linear-gradient(90deg, transparent 0%, rgba(201, 151, 58, 0.05) 100%);
+        }
+
+        /* Connection Diagram */
+        .connection-diagram {
+            background: linear-gradient(135deg, var(--dark-blue) 0%, var(--navy) 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+            color: white;
+        }
+
+        .diagram-title {
+            text-align: center;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--gold);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .flow-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .flow-box {
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .flow-income { background: var(--green); }
+        .flow-balance { background: var(--navy); border: 2px solid var(--gold); }
+        .flow-cashflow { background: var(--gold); color: var(--navy); }
+
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: var(--gold);
+        }
+
+        .flow-label {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.7);
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        /* Why It Matters */
+        .why-box {
+            background: white;
+            border-left: 5px solid var(--gold);
+            border-radius: 0 12px 12px 0;
+            padding: 25px 30px;
+            box-shadow: 0 4px 20px rgba(13, 27, 42, 0.1);
+        }
+
+        .why-list {
+            list-style: none;
+        }
+
+        .why-list li {
+            padding: 12px 0;
+            padding-left: 35px;
+            position: relative;
+            border-bottom: 1px solid rgba(13, 27, 42, 0.08);
+        }
+
+        .why-list li:last-child {
+            border-bottom: none;
+        }
+
+        .why-list li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--gold);
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .why-emphasis {
+            color: var(--gold);
+            font-weight: 700;
+        }
+
+        /* Real World */
+        .real-world-box {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--dark-blue) 100%);
+            border-radius: 12px;
+            padding: 30px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .real-world-box::before {
+            content: '"';
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-family: 'Playfair Display', serif;
+            font-size: 6rem;
+            color: rgba(201, 151, 58, 0.15);
+            line-height: 1;
+        }
+
+        .real-world-label {
+            background: var(--gold);
+            color: var(--navy);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .real-world-company {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--gold);
+            margin-bottom: 15px;
+        }
+
+        .real-world-text {
+            font-size: 1rem;
+            line-height: 1.7;
+            position: relative;
+            z-index: 1;
+        }
+
+        .impact-tag {
+            display: inline-block;
+            background: rgba(201, 151, 58, 0.2);
+            color: var(--gold);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 2px;
+        }
+
+        /* Interview Prep */
+        .interview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .interview-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .question-box {
+            background: linear-gradient(135deg, #3a4a5c 0%, #2d3a4a 100%);
+            border-radius: 12px;
+            padding: 25px;
+            color: white;
+        }
+
+        .question-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--gold);
+            margin-bottom: 12px;
+        }
+
+        .question-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+
+        .answer-box {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(13, 27, 42, 0.1);
+        }
+
+        .answer-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--green);
+            margin-bottom: 15px;
+        }
+
+        .answer-step {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .step-number {
+            background: var(--navy);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .step-text strong {
+            color: var(--gold);
+        }
+
+        /* Self-Test */
+        .self-test-box {
+            background: linear-gradient(135deg, rgba(201, 151, 58, 0.1) 0%, rgba(201, 151, 58, 0.05) 100%);
+            border: 2px dashed var(--gold);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .self-test-label {
+            background: var(--gold);
+            color: var(--navy);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .self-test-question {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 12px;
+        }
+
+        .self-test-answer {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            border-left: 4px solid var(--green);
+        }
+
+        /* Quiz Section */
+        .quiz-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(13, 27, 42, 0.1);
+        }
+
+        .quiz-question {
+            margin-bottom: 25px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid rgba(13, 27, 42, 0.1);
+        }
+
+        .quiz-question:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .quiz-q-number {
+            display: inline-block;
+            background: var(--navy);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-right: 10px;
+        }
+
+        .quiz-q-text {
+            display: inline;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .quiz-options {
+            display: grid;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .quiz-option {
+            padding: 14px 18px;
+            border: 2px solid rgba(13, 27, 42, 0.15);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            background: white;
+        }
+
+        .quiz-option:hover:not(.disabled) {
+            border-color: var(--gold);
+            background: rgba(201, 151, 58, 0.05);
+        }
+
+        .quiz-option.correct {
+            background: linear-gradient(135deg, var(--green) 0%, #2d6b3f 100%);
+            color: white;
+            border-color: var(--green);
+        }
+
+        .quiz-option.wrong {
+            background: linear-gradient(135deg, var(--red) 0%, #a52a2a 100%);
+            color: white;
+            border-color: var(--red);
+        }
+
+        .quiz-option.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .quiz-explanation {
+            margin-top: 12px;
+            padding: 12px 15px;
+            background: rgba(30, 77, 43, 0.1);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            display: none;
+            border-left: 4px solid var(--green);
+        }
+
+        .quiz-explanation.show {
+            display: block;
+        }
+
+        /* Key Takeaways */
+        .takeaways-box {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--dark-blue) 100%);
+            border-radius: 12px;
+            padding: 30px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .takeaways-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gold);
+        }
+
+        .takeaways-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--gold);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .takeaways-title::before {
+            content: '★';
+        }
+
+        .takeaways-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .takeaway-item {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .takeaway-bullet {
+            background: var(--gold);
+            color: var(--navy);
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .takeaway-text {
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px 20px;
+            margin-top: 30px;
+            border-top: 2px solid rgba(13, 27, 42, 0.1);
+        }
+
+        .footer-brand {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--navy);
+            margin-bottom: 8px;
+        }
+
+        .footer-brand span {
+            color: var(--gold);
+        }
+
+        .footer-info {
+            font-size: 0.85rem;
+            color: var(--dark-blue);
+            opacity: 0.7;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .infographic-header,
+            .statement-row {
+                grid-template-columns: 1fr;
+            }
+
+            .infographic-header div {
+                display: none;
+            }
+
+            .infographic-header div:first-child {
+                display: block;
+            }
+
+            .statement-name {
+                background: rgba(13, 27, 42, 0.03);
+            }
+
+            .statement-desc,
+            .statement-question {
+                border-left: none;
+                border-top: 1px solid rgba(13, 27, 42, 0.1);
+            }
+
+            .statement-question::before {
+                content: 'Key Question: ';
+                font-style: normal;
+                color: var(--dark-blue);
+            }
+
+            .flow-container {
+                flex-direction: column;
+            }
+
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+
+            .section-title {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <span class="badge">Week 1 of 13 • Accounting & 3-Statement</span>
+            <h1>How the <span>Three Statements</span> Connect</h1>
+            <p class="header-subtitle">The foundational linkage every finance professional must master</p>
+        </header>
+
+        <!-- Section 1: What Is It -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-number">1</span>
+                <h2 class="section-title">What Is It?</h2>
+            </div>
+
+            <div class="infographic-grid">
+                <div class="infographic-header">
+                    <div>Statement</div>
+                    <div>What It Shows</div>
+                    <div>Key Question</div>

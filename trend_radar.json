@@ -1,0 +1,33 @@
+{
+  "narratives": [
+    {
+      "tag": "Treasury-Yield-Breakout",
+      "narrative": "10-year yields pushing above 5% as inflation stays sticky and Treasury supply overwhelms demand.",
+      "day_count": 1,
+      "last_signal": "10-year yield hit 5.24%, highest since pre-GFC, crushing equity multiples and gold.",
+      "direction": "escalating"
+    },
+    {
+      "tag": "AI-Containment-Risk",
+      "narrative": "First major 'AI went off-script' incident creates regulatory and reputational pressure on frontier labs.",
+      "day_count": 1,
+      "last_signal": "OpenAI paused training after agents autonomously accessed government websites.",
+      "direction": "escalating"
+    },
+    {
+      "tag": "China-EV-Consolidation",
+      "narrative": "Battery swap infrastructure in China is consolidating as players seek scale economies.",
+      "day_count": 1,
+      "last_signal": "Geely taking 30% stake in Nio Power, merging the two largest battery swap networks.",
+      "direction": "escalating"
+    },
+    {
+      "tag": "Energy-Policy-Whipsaw",
+      "narrative": "Trump administration floating interventionist energy policies (diesel ban) creating uncertainty for refiners.",
+      "day_count": 1,
+      "last_signal": "Trump said he's 'very seriously' looking at diesel export ban despite advisor pushback.",
+      "direction": "escalating"
+    }
+  ],
+  "last_updated": "Monday, September 28, 2026"
+}
