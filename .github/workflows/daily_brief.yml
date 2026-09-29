@@ -2,17 +2,30 @@ name: Daily Brief
 
 on:
   schedule:
-   - cron: '30 11 * * 1-5'
-   - cron: '30 14 * * 6'
+    - cron: '15 11 * * 1-5'   # Morning: 7:15 AM ET during daylight time
+    - cron: '15 12 * * 1-5'   # Morning: 7:15 AM ET during standard time
+    - cron: '45 20 * * 1-5'   # Close: 4:45 PM ET during daylight time
+    - cron: '45 21 * * 1-5'   # Close: 4:45 PM ET during standard time
+    - cron: '30 14 * * 6'     # Weekly: Saturday
   workflow_dispatch:
+    inputs:
+      edition:
+        description: 'Which edition to send'
+        type: choice
+        options: [morning, close, weekly]
+        default: morning
 
 permissions:
   contents: write
 
+concurrency:
+  group: daily-brief
+  cancel-in-progress: false
+
 jobs:
   send-brief:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -28,6 +41,7 @@ jobs:
 
       - name: Run briefing agent
         env:
+          EDITION:                ${{ github.event.inputs.edition }}
           ANTHROPIC_API_KEY:      ${{ secrets.ANTHROPIC_API_KEY }}
           NEWS_API_KEY:           ${{ secrets.NEWS_API_KEY }}
           FINNHUB_API_KEY:        ${{ secrets.FINNHUB_API_KEY }}
@@ -35,16 +49,19 @@ jobs:
           FRED_API_KEY:           ${{ secrets.FRED_API_KEY }}
           FMP_API_KEY:            ${{ secrets.FMP_API_KEY }}
           ALPHA_VANTAGE_API_KEY:  ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          BLS_API_KEY:            ${{ secrets.BLS_API_KEY }}
+          BEA_API_KEY:            ${{ secrets.BEA_API_KEY }}
+          DATA_GOV_API_KEY:       ${{ secrets.DATA_GOV_API_KEY }}
+          EIA_API_KEY:            ${{ secrets.EIA_API_KEY }}
           GMAIL_USER:             ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASS:         ${{ secrets.GMAIL_APP_PASS }}
-          GOOGLE_CSE_API_KEY:     ${{ secrets.GOOGLE_CSE_API_KEY }}
-          GOOGLE_CSE_CX:          ${{ secrets.GOOGLE_CSE_CX }}
         run: python briefing.py
 
-      - name: Commit updated files
+      - name: Commit state
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "Daily Brief Bot"
-          git add trend_radar.json seen_contacts.json learning_progress.json study/index.html || true
-          git diff --staged --quiet || git commit -m "Update brief + study tool [skip ci]"
+          git add brief_state.json
+          git diff --staged --quiet || git commit -m "Update brief state [skip ci]"
+          git pull --rebase
           git push
