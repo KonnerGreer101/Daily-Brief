@@ -527,6 +527,145 @@ def fmt_quotes(q):
 def fmt_movers(m):
     return "\n".join(f"• {r['ticker']}: ${r['price']:,.2f} ({r['change_pct']:+.2f}%)" for r in m) or "No mover data."
 
+# ══════════════════════════════════════════════════════════════════════════
+#  MARKET-WIDE MOVERS, PRE-MARKET MOVERS, INSIDER BUYS, ACTIVIST STAKES
+# ══════════════════════════════════════════════════════════════════════════
+
+def fetch_market_screens(min_cap=2e9, n=6):
+    """Market-wide top gainers, losers, and most active (companies over $2B), via Yahoo screeners."""
+    out = {}
+    try:
+        import yfinance as yf
+        for key, query in [("gainers", "day_gainers"), ("losers", "day_losers"), ("most_active", "most_actives")]:
+            try:
+                res = yf.screen(query, count=100)
+                rows = []
+                for q in res.get("quotes", []):
+                    if (q.get("marketCap") or 0) < min_cap or (q.get("regularMarketPrice") or 0) < 5:
+                        continue
+                    rows.append({"ticker": q.get("symbol"), "name": q.get("shortName") or q.get("longName") or "",
+                                 "price": q.get("regularMarketPrice"), "change_pct": round(q.get("regularMarketChangePercent") or 0, 2),
+                                 "cap_b": round((q.get("marketCap") or 0) / 1e9, 1), "volume": q.get("regularMarketVolume")})
+                out[key] = rows[:n]
+            except Exception as ex:
+                print(f"    [screen {query}]: {ex}")
+    except ImportError:
+        pass
+    print(f"    [market screens] " + ", ".join(f"{k}={len(v)}" for k, v in out.items()))
+    return out
+
+def fmt_screens(s):
+    if not s or not any(s.values()):
+        return "Market-wide screens unavailable; use the large-cap movers list."
+    parts = []
+    for key, label in [("gainers", "TOP GAINERS"), ("losers", "TOP LOSERS"), ("most_active", "MOST ACTIVE")]:
+        rows = s.get(key) or []
+        parts.append(label + ":\n" + "\n".join(
+            f"• {r['ticker']} ({r['name']}, ${r['cap_b']}B cap): ${r['price']} ({r['change_pct']:+.2f}%)" for r in rows))
+    return "\n".join(parts)
+
+def fetch_premarket_movers(n=8):
+    """Pre-market moves for the large-cap watchlist: latest extended-hours price vs prior regular close."""
+    try:
+        import yfinance as yf
+        df = yf.download(WATCHLIST, period="5d", interval="5m", prepost=True, progress=False, auto_adjust=True, threads=True)["Close"]
+        rows = []
+        today = NOW.date()
+        for sym in WATCHLIST:
+            if sym not in df:
+                continue
+            s = df[sym].dropna()
+            if s.empty:
+                continue
+            idx = s.index.tz_convert(ET_TZ)
+            prior = s[(idx.date < today) & (idx.hour * 60 + idx.minute < 16 * 60) & (idx.hour * 60 + idx.minute >= 9 * 60 + 30)]
+            if prior.empty:
+                continue
+            prev, last = float(prior.iloc[-1]), float(s.iloc[-1])
+            rows.append({"ticker": sym, "price": round(last, 2), "change_pct": _pct(last, prev)})
+        rows.sort(key=lambda r: abs(r["change_pct"]), reverse=True)
+        print(f"    [pre-market movers] {len(rows[:n])}")
+        return rows[:n]
+    except Exception as ex:
+        print(f"    [pre-market movers]: {ex}")
+        return []
+
+def fetch_insider_buys(days=4, min_value=250_000):
+    """Open-market insider purchases (Form 4 code P) at watchlist companies, via Finnhub."""
+    if not FINNHUB_KEY:
+        return []
+    since = (NOW - timedelta(days=days)).strftime("%Y-%m-%d")
+    out = []
+    for sym in WATCHLIST:
+        try:
+            q = urllib.parse.urlencode({"symbol": sym, "from": since, "token": FINNHUB_KEY})
+            for t in http_json(f"https://finnhub.io/api/v1/stock/insider-transactions?{q}").get("data", []):
+                if t.get("transactionCode") != "P":
+                    continue
+                value = abs(t.get("change") or 0) * (t.get("transactionPrice") or 0)
+                if value >= min_value:
+                    out.append(f"• {sym}: {t.get('name')} bought {abs(t.get('change')):,} shares at ${t.get('transactionPrice')} (≈${value/1e6:.1f}M) on {t.get('transactionDate')}")
+        except Exception as ex:
+            print(f"    [insider {sym}]: {ex}")
+            if "429" in str(ex):
+                time.sleep(5)
+        time.sleep(1.05)   # Finnhub free tier: 60 calls/minute
+    print(f"    [insider buys] {len(out)}")
+    return out[:15]
+
+def fetch_activist_13d(n=40):
+    """New Schedule 13D filings (activist or control-intent stakes) from EDGAR's latest-filings feed."""
+    out, seen = [], set()
+    for form in ["SCHEDULE 13D", "SC 13D"]:
+        try:
+            q = urllib.parse.urlencode({"action": "getcurrent", "type": form, "owner": "include", "count": n, "output": "atom"})
+            root = ET.fromstring(http_text(f"https://www.sec.gov/cgi-bin/browse-edgar?{q}", headers=SEC_HEADERS))
+            ns = {"a": "http://www.w3.org/2005/Atom"}
+            for ent in root.findall("a:entry", ns):
+                title = (ent.findtext("a:title", "", ns) or "").strip()
+                if "(Subject)" in title and title not in seen and not title.upper().startswith(form + "/A"):
+                    seen.add(title)
+                    out.append("• " + title.replace("(Subject)", "").strip())
+        except Exception as ex:
+            print(f"    [13D {form}]: {ex}")
+    print(f"    [13D] {len(out)}")
+    return out[:15]
+
+def fetch_nyfed_rates():
+    try:
+        rows = http_json("https://markets.newyorkfed.org/api/rates/all/latest.json").get("refRates", [])
+        out = [f"• {r.get('type')}: {r.get('percentRate')}% ({r.get('effectiveDate')}), volume ${r.get('volumeInBillions')}B"
+               for r in rows if r.get("type") in ("SOFR", "EFFR", "OBFR", "TGCR")]
+        print(f"    [NY Fed] {len(out)}")
+        return out
+    except Exception as ex:
+        print(f"    [NY Fed]: {ex}")
+        return []
+
+COT_MARKETS = {"E-MINI S&P 500": "S&P 500 e-mini", "UST 10Y NOTE": "10-Yr Treasury note",
+               "CRUDE OIL, LIGHT SWEET": "WTI crude", "GOLD - COMMODITY EXCHANGE": "Gold",
+               "U.S. DOLLAR INDEX": "Dollar index", "NASDAQ-100": "Nasdaq-100"}
+
+def fetch_cot():
+    """CFTC Commitments of Traders: speculator (non-commercial) net positioning, week over week."""
+    try:
+        since = (NOW - timedelta(days=21)).strftime("%Y-%m-%dT00:00:00")
+        q = urllib.parse.urlencode({"$where": f"report_date_as_yyyy_mm_dd >= '{since}'", "$limit": 5000,
+                                    "$order": "report_date_as_yyyy_mm_dd DESC"})
+        rows = http_json(f"https://publicreporting.cftc.gov/resource/6dca-aqww.json?{q}", timeout=30)
+        out = []
+        for key, label in COT_MARKETS.items():
+            hits = [r for r in rows if r.get("market_and_exchange_names", "").upper().startswith(key)]
+            if len(hits) >= 2:
+                net = [int(float(h["noncomm_positions_long_all"])) - int(float(h["noncomm_positions_short_all"])) for h in hits[:2]]
+                out.append(f"• {label}: speculators net {net[0]:+,} contracts (week of {hits[0]['report_date_as_yyyy_mm_dd'][:10]}), change {net[0]-net[1]:+,}")
+        print(f"    [CFTC COT] {len(out)}")
+        return out
+    except Exception as ex:
+        print(f"    [CFTC]: {ex}")
+        return []
+
+
 
 # ══════════════════════════════════════════════════════════════════════════
 #  EARNINGS (Finnhub calendar, FMP fallback) filtered to large caps
@@ -925,6 +1064,10 @@ RSS_FEEDS = {
     "techcrunch_fund": "https://techcrunch.com/category/fundings-exits/feed/",
     "crunchbase_news": "https://news.crunchbase.com/feed/",
     "prn_ma":          "https://www.prnewswire.com/rss/financial-services-latest-news/acquisitions-mergers-and-takeovers-list.rss",
+    "fed_press":       "https://www.federalreserve.gov/feeds/press_all.xml",
+    "fed_speeches":    "https://www.federalreserve.gov/feeds/speeches.xml",
+    "ftc_competition": "https://www.ftc.gov/feeds/press-release-competition.xml",
+    "doj_news":        "https://www.justice.gov/feeds/opa/justice-news.xml",
     "gnw_ma":          "https://www.globenewswire.com/RssFeed/subjectcode/27-Mergers%20And%20Acquisitions/feedTitle/GlobeNewswire%20-%20Mergers%20And%20Acquisitions",
 }
 
@@ -935,7 +1078,8 @@ SOURCE_NAMES = {
     "npr_politics": "NPR", "npr_business": "NPR", "politico": "Politico", "techmeme": "Techmeme",
     "venturebeat": "VentureBeat", "wired_ai": "Wired", "axios": "Axios", "techcrunch_ma": "TechCrunch",
     "techcrunch_fund": "TechCrunch", "crunchbase_news": "Crunchbase", "prn_ma": "PR Newswire",
-    "gnw_ma": "GlobeNewswire",
+    "gnw_ma": "GlobeNewswire", "fed_press": "Federal Reserve", "fed_speeches": "Federal Reserve",
+    "ftc_competition": "FTC", "doj_news": "DOJ",
 }
 
 
@@ -969,6 +1113,9 @@ def _news_block(hours):
         "tech":    fetch_rss_multi(["techmeme", "venturebeat", "wired_ai", "bbc_tech", "guardian_tech"], 6, hours)
                    + fetch_hn(hours) + gnews_search("OpenAI OR Anthropic OR Gemini OR xAI OR Nvidia OR \"data center\"", 10)
                    + newsapi_search("OpenAI Anthropic Google Gemini xAI Grok Nvidia Microsoft Meta AI", 8, days),
+        "fed":     fetch_rss_multi(["fed_press", "fed_speeches"], 8, max(hours, 24)),
+        "antitrust": fetch_rss_multi(["ftc_competition"], 8, max(hours, 48))
+                   + [a for a in fetch_rss("doj_news", 40, max(hours, 48)) if re.search(r"antitrust|merger|acquisition|monopol", a["title"] + " " + a["description"], re.I)],
         "policy":  fetch_rss_multi(["politico", "npr_politics", "bbc_world", "guardian_world"], 6, hours)
                    + gnews_top("world", 8) + gnews_top("nation", 8)
                    + fetch_gdelt("(missile OR airstrike OR sanctions OR ceasefire OR invasion OR tariffs)", f"{hours}h" if hours <= 72 else "7d"),
@@ -982,12 +1129,16 @@ def gather(edition, state):
         d["quotes"]  = fetch_quotes(INDEX_TICKERS, "session")
         print("  → Today's earnings...")
         d["earnings"] = fetch_earnings(DATE_KEY, DATE_KEY)
+        print("  → Pre-market movers + insider buys...")
+        d["premarket_movers"] = fetch_premarket_movers()
+        d["insider_buys"] = fetch_insider_buys(days=4 if NOW.weekday() == 0 else 2)
         edgar_days, news_hours = (3 if NOW.weekday() == 0 else 1), (72 if NOW.weekday() == 0 else 24)
         congress_days = 3 if NOW.weekday() == 0 else 1
     elif edition == "close":
         print("  → Session close + movers...")
         d["quotes"] = fetch_quotes(INDEX_TICKERS, "session")
         d["movers"] = fetch_movers("session")
+        d["screens"] = fetch_market_screens()
         print("  → Today's earnings...")
         d["earnings"] = fetch_earnings(DATE_KEY, DATE_KEY)
         print("  → X feeds...")
@@ -1001,9 +1152,12 @@ def gather(edition, state):
         mon = (NOW + timedelta(days=(7 - NOW.weekday()))).strftime("%Y-%m-%d")
         fri = (NOW + timedelta(days=(11 - NOW.weekday()))).strftime("%Y-%m-%d")
         d["earnings"] = fetch_earnings(mon, fri)
+        d["cot"] = fetch_cot()
         edgar_days, news_hours, congress_days = 6, 150, 6
     print("  → Macro (BLS, BEA, EIA, Treasury, FRED)...")
     d["macro"], d["new_releases"] = gather_macro(state)
+    d["nyfed"] = fetch_nyfed_rates()
+    d["activist"] = fetch_activist_13d()
     print("  → SEC EDGAR deals...")
     d["edgar_deals"], d["edgar_other"] = fetch_edgar_deals(days_back=edgar_days, max_docs=8 if edition == "weekly" else 6)
     print("  → Congress + Federal Register...")
@@ -1103,6 +1257,15 @@ def _common_blocks(d):
     return f"""=== MACRO DATA (🆕 = released since the last edition) ===
 {d['macro']}
 
+=== NY FED FUNDING RATES ===
+{chr(10).join(d['nyfed']) or 'Unavailable.'}
+
+=== FEDERAL RESERVE: PRESS RELEASES + SPEECHES ===
+{fmt_articles(d['fed'], 12)}
+
+=== SEC: NEW ACTIVIST / CONTROL STAKES (Schedule 13D, subject company shown) ===
+{chr(10).join(d['activist']) or 'None.'}
+
 === SEC EDGAR: NEW MERGER AGREEMENTS (with press-release text) ===
 {fmt_edgar(d['edgar_deals'], d['edgar_other'])}
 
@@ -1117,6 +1280,9 @@ def _common_blocks(d):
 
 === TECH & AI NEWS (incl. Hacker News) ===
 {fmt_articles(d['tech'], 30)}
+
+=== ANTITRUST (FTC competition + DOJ) ===
+{fmt_articles(d['antitrust'], 10)}
 
 === CONGRESS: MAJOR BILL ACTIONS ===
 {chr(10).join(d['congress']) or 'None.'}
@@ -1141,6 +1307,12 @@ def build_prompt(d):
 === LARGE-CAP EARNINGS TODAY ===
 {fmt_earnings(d['earnings'])}
 
+=== PRE-MARKET MOVERS (large-cap watchlist, vs prior close) ===
+{fmt_movers(d['premarket_movers'])}
+
+=== INSIDER OPEN-MARKET PURCHASES (last few days, watchlist) ===
+{chr(10).join(d['insider_buys']) or 'None.'}
+
 {_common_blocks(d)}
 
 Return JSON with exactly these keys:
@@ -1148,6 +1320,7 @@ Return JSON with exactly these keys:
   "opening": ["3-5 one-line bullets: the defining themes of the day, opinionated"],
   "premarket": {{"bullets": ["3-5 bullets: where futures are and why, key overnight moves in yields, oil, dollar, Asia/Europe, and what it sets up for today"], "plain_english": "1-2 sentences"}},
   "top_tier_event": "ONE line only if today has payrolls, CPI, PPI, PCE, GDP, or a Fed decision/minutes/Chair speech (say time ET and why it matters); otherwise empty string",
+  "stocks_to_watch": [{{"ticker": "TICKER", "company": "Name", "catalyst": "the specific catalyst today (earnings, deal, upgrade/downgrade, activist stake, insider buy, big pre-market move, product event)", "why": "1-2 sentences: why it could move and what it means", "watch": "the specific level, number, or signal to watch"}}  // 4-6 names; use web search for analyst rating changes and pre-market movers beyond the watchlist; a company can appear here AND in earnings_today only if the angle is different],
   "earnings_today": [{{"ticker": "TICKER", "company": "Name", "timing": "Before open / After close", "expectations": "EPS and revenue consensus plus the one metric that matters most", "why_it_matters": "read-through for the stock, sector, or AI trade", "plain_english": "optional"}}],
   "deals": [{DEAL_SCHEMA}  // 3-5 most important deals announced since the last edition],
   "street": [{STORY_SCHEMA}  // 2-4 industry items: banks, dealmaking trends, hiring, fees, league tables, PE fundraising],
@@ -1164,7 +1337,10 @@ This morning's edition already covered these headlines, so do NOT repeat them un
 === TODAY'S CLOSE (authoritative) ===
 {fmt_quotes(d['quotes'])}
 
-=== BIGGEST LARGE-CAP MOVERS TODAY ===
+=== MARKET-WIDE MOVERS TODAY (companies over $2B) ===
+{fmt_screens(d['screens'])}
+
+=== LARGE-CAP WATCHLIST MOVERS TODAY ===
 {fmt_movers(d['movers'])}
 
 === LARGE-CAP EARNINGS TODAY (actuals may be missing for after-close reporters; use web search for results and after-hours reaction) ===
@@ -1179,7 +1355,8 @@ Return JSON with exactly these keys:
 {{
   "opening": ["2-4 one-line bullets: how the day ended and why"],
   "recap": {{"bullets": ["4-6 bullets: indexes, sectors, yields, oil, dollar, and the WHY behind the tape"], "plain_english": "1-2 sentences on the most important concept from today"}},
-  "movers": [{{"name": "TICKER (Company)", "change": "+x.x%", "reason": "one sentence catalyst, verified"}}  // 4-6 from the movers list that have a real catalyst],
+  "top_movers": {{"gainers": [{{"name": "TICKER (Company)", "change": "+x.x%", "reason": "1-2 sentences: the verified catalyst and whether the move looks durable"}}], "losers": [same shape], "most_active": [same shape]}},  // 4-5 gainers, 4-5 losers, 3 most active; use web search to verify each reason; say "no clear catalyst" rather than guess
+  "stocks_to_watch": [{{"ticker": "TICKER", "company": "Name", "catalyst": "why it is in play for TOMORROW (after-hours earnings, deal, activist stake, guidance, event)", "why": "1-2 sentences", "watch": "the specific signal to watch"}}  // 3-5 names],
   "earnings_results": [{{"ticker": "TICKER", "company": "Name", "result": "EPS and revenue vs estimates, guidance", "why": "what drove it", "reaction": "stock move, including after hours if known", "plain_english": "optional"}}],
   "macro": [{{"release": "name", "result": "actual vs prior (and vs expectations only if verified)", "takeaway": "what it means for the Fed, yields, and stocks"}}  // only data released today; empty list if none],
   "late_breaking": [{STORY_SCHEMA}  // each item ALSO gets a "tag" field ("Deal", "Tech & AI", "Policy", "Politics", "Street"); 2-5 important items that broke during the trading day and were NOT in the morning edition; deals here use the analyst mindset in "why"],
@@ -1198,6 +1375,9 @@ trending_x: use only posts from the X feed above; prioritize data and sharp take
 === LARGE-CAP EARNINGS NEXT WEEK ===
 {fmt_earnings(d['earnings'])}
 
+=== CFTC POSITIONING (speculators, weekly) ===
+{chr(10).join(d['cot']) or 'Unavailable.'}
+
 {_common_blocks(d)}
 
 Return JSON with exactly these keys:
@@ -1209,6 +1389,7 @@ Return JSON with exactly these keys:
   "street": [{STORY_SCHEMA}  // 2-3 industry themes of the week],
   "tech_ai": [{STORY_SCHEMA}  // 3-5 biggest tech and AI developments],
   "macro": [{{"release": "name", "result": "actual vs prior", "takeaway": "what it means"}}  // the week's key data],
+  "positioning": {{"bullets": ["2-4 bullets: what speculator positioning says (crowded trades, shifts)"], "plain_english": "explain what futures positioning tells an investor"}},  // omit bullets if data unavailable
   "policy_politics": [{STORY_SCHEMA}  // each item ALSO gets a "tag" field; 3-5],
   "week_ahead": [{{"item": "short title", "why": "1-2 sentences"}}  // 3-6 genuinely important events next week, including major earnings from the list]
 }}"""
@@ -1453,6 +1634,23 @@ def macro_cards(items):
                  f'{li("Result", m.get("result"))}{li("Takeaway", m.get("takeaway"), True)}</ul></div>')
     return html
 
+def watch_stocks(items):
+    html = ""
+    for it in items or []:
+        body = li("Catalyst", it.get("catalyst")) + li("Why", it.get("why"), True) + li("Watch", it.get("watch"), True)
+        html += f'<div class="bcard"><div class="bcard-hed">{e(it.get("company",""))} ({e(it.get("ticker",""))})</div><ul class="blist">{body}</ul></div>'
+    return html
+
+def top_movers(tm):
+    if not tm:
+        return ""
+    html = ""
+    for key, label in [("gainers", "Top Gainers"), ("losers", "Top Losers"), ("most_active", "Most Active")]:
+        rows = tm.get(key) or []
+        if rows:
+            html += f'<div class="bcard-meta" style="margin-top:10px">{label}</div>' + mover_list(rows)
+    return html
+
 def watch_list(items):
     html = ""
     for i, w in enumerate(items or [], 1):
@@ -1494,6 +1692,7 @@ def render(brief, d):
                         + tiles(d["quotes"], ["^TNX", "^VIX", "BZ=F", "GC=F", "DX-Y.NYB", "BTC-USD"])
                         + render_bullets(pm.get("bullets")) + pe_note(pm.get("plain_english"))
                         + (f'<div class="dash-note" style="margin-top:12px"><strong>Today:</strong> {e(top)}</div>' if top else ""))
+                + section("Stocks to Watch", "teal", "In Play Today", watch_stocks(brief.get("stocks_to_watch")))
                 + section("Earnings Today", "gold", "Who Reports", earnings_cards(brief.get("earnings_today")))
                 + section("Deals & Street", "copper", "M&A With an Analyst Lens", deal_cards(brief.get("deals")))
                 + section("The Street", "slate", "Industry News", story_cards(brief.get("street")))
@@ -1506,10 +1705,11 @@ def render(brief, d):
         body = (section("The Close", "navy", "Market Recap",
                         tiles(d["quotes"], ["^GSPC", "^IXIC", "^DJI", "^RUT", "^VIX", "^TNX", "^IRX", "CURVE", "BZ=F", "CL=F", "GC=F", "DX-Y.NYB"])
                         + render_bullets(rc.get("bullets")) + pe_note(rc.get("plain_english")))
-                + section("Movers", "slate", "Biggest Moves & Why", mover_list(brief.get("movers")))
+                + section("Movers", "slate", "Biggest Moves & Why", top_movers(brief.get("top_movers")))
                 + section("Earnings Results", "gold", "Beat or Miss", earnings_cards(brief.get("earnings_results"), results=True))
                 + section("Macro", "green", "Today's Data", macro_cards(brief.get("macro")))
                 + section("Late-Breaking", "copper", "What Broke During the Session", story_cards(brief.get("late_breaking")))
+                + section("Stocks to Watch", "teal", "In Play Tomorrow", watch_stocks(brief.get("stocks_to_watch")))
                 + section("What Matters Next", "charcoal", "Only the Big Stuff", watch_list(brief.get("what_matters_next")))
                 + section("Trending on X", "indigo", "The Feed", x_section(brief.get("trending_x")), last=True))
         return page("The Daily Brief · Closing Edition", "Good Evening, Konner.", TODAY,
@@ -1522,7 +1722,9 @@ def render(brief, d):
             + section("Deals & Street", "copper", "Deals of the Week", deal_cards(brief.get("top_deals")))
             + section("The Street", "slate", "Industry Themes", story_cards(brief.get("street")))
             + section("Tech & AI", "purple", "The Week in AI", story_cards(brief.get("tech_ai")))
-            + section("Macro", "green", "The Week's Data", macro_cards(brief.get("macro")))
+            + section("Macro", "green", "The Week's Data", macro_cards(brief.get("macro"))
+                      + (render_bullets((brief.get("positioning") or {}).get("bullets")) + pe_note((brief.get("positioning") or {}).get("plain_english"))
+                         if (brief.get("positioning") or {}).get("bullets") else ""))
             + section("Policy & Politics", "red", "What Moved Markets", story_cards(brief.get("policy_politics")))
             + section("Week Ahead", "charcoal", "Only the Big Stuff", watch_list(brief.get("week_ahead")), last=True))
     mon = NOW - timedelta(days=NOW.weekday())
