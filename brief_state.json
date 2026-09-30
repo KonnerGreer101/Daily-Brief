@@ -19,27 +19,27 @@
     "eia:Natural gas storage (Bcf)": "2026-09-18"
   },
   "sent": {
-    "morning": "2026-09-29",
+    "morning": "2026-09-30",
     "close": "2026-09-29"
   },
   "morning_headlines": {
-    "2026-09-29": [
-      "AMD Buys World Labs for $8.2B, Lands Fei-Fei Li as Chief Scientist",
-      "Long Lake Closes $6.3B Take-Private of Amex GBT, Citing AI Transformation",
-      "Webster Equity Partners to Acquire Lifecore Biomedical for Up to $664M with CVR",
-      "Transom Capital to Acquire SoundThinking for $8.00/Share Plus CVR Up to $3.00",
-      "Copart Tender Offer for ACV Auctions Expires Tonight at $10.50/Share",
-      "Goldman Sachs Board Discusses Replacing David Solomon as Early as Next Year",
-      "Polymarket Hires Goldman Vet Lisa Mantil to Attract Institutional Liquidity",
-      "OpenAI Launches 'Dots' at DevDay: Always-On Agents Powered by GPT-6 Astra",
-      "Anthropic's Public S-1 Drops: $8B Loss, $4.6B Revenue, 'Existential Risk' Warnings",
-      "Trump Signs 'Morally Binding' AI Accord with Tech CEOs, Rejects Federal Rules",
-      "Oura Pulls $15B IPO Days After Announcement, Citing Market 'Uncertainty'",
-      "Oil Drops 4-9% as Saudi Resumes Red Sea Loadings, Gulf Exports Hit September Highs",
-      "Supreme Court Allows Trump's Third-Country Deportations to Resume",
-      "Trump Administration Scales Back Biden-Era Fuel Efficiency Standards for New Cars",
-      "Fed's Barr Speaks on Economic Conditions; Waller Addresses AI in Payments"
+    "2026-09-30": [
+      "Long Lake Takes Amex GBT Private for $6.3B, Betting AI Can Transform Corporate Travel",
+      "AMD Acquires World Labs for $8.2B in Stock, Hires Fei-Fei Li to Lead AI Research",
+      "TransDigm Closes $1.07B Prince & Izant Deal, Continues Aerospace Roll-Up",
+      "Transom Capital Takes SoundThinking Private with $8 Cash Plus $3 CVR",
+      "Choice Hotels Buys Harvest Hosts for $130M, Expanding into RV Travel",
+      "Goldman Board Floats Waldron CEO Succession, Solomon May Stay as Chairman",
+      "Temasek to Open Abu Dhabi and Riyadh Offices by First Half 2027",
+      "OpenAI Launches 'Dots,' Always-On AI Agents Powered by GPT-6 Astra",
+      "Robinhood Unveils AI Trading Agents at HOOD Summit",
+      "Trump Hosts 'Superintelligence Summit,' Tech CEOs Sign Voluntary AI Self-Policing Accord",
+      "AMD's World Labs Deal Brings Fei-Fei Li Into Nvidia Battle",
+      "Trump 'Very Seriously' Weighing 90-Day Diesel Export Ban as Prices Hit $6.50/Gallon",
+      "Russia Extends Diesel Export Ban Through October, Tightening Global Supply",
+      "FTC Secures Order in Zillow-Redfin Deal, Files Action on Beretta-Ruger",
+      "Bank of England's Bailey: AI Needs 'Right to Intervene,' Not Upfront Regulation"
     ]
   },
-  "last_run": "2026-09-30T00:47:06+00:00"
+  "last_run": "2026-09-30T12:47:19+00:00"
 }
