@@ -20,7 +20,8 @@
   },
   "sent": {
     "morning": "2026-10-03",
-    "close": "2026-09-30"
+    "close": "2026-09-30",
+    "weekly": "2026-10-03"
   },
   "morning_headlines": {
     "2026-10-03": [
@@ -42,5 +43,5 @@
       "Trump's Top National Security Aides Meet at Camp David on Iran and Yemen"
     ]
   },
-  "last_run": "2026-10-03T11:04:09+00:00"
+  "last_run": "2026-10-03T18:08:58+00:00"
 }
