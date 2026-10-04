@@ -19,29 +19,26 @@
     "eia:Natural gas storage (Bcf)": "2026-09-25"
   },
   "sent": {
-    "morning": "2026-10-03",
+    "morning": "2026-10-04",
     "close": "2026-09-30",
     "weekly": "2026-10-03"
   },
   "morning_headlines": {
-    "2026-10-03": [
-      "BC Partners Lending Closes BDC Merger with Alternative Credit Income Fund",
-      "FTC Approves Final Order in $3.9B Ascension-AmSurg Ambulatory Surgery Deal",
-      "FTC Secures Settlement in Beretta-Ruger Firearms Combination",
-      "Nebius Acquires Inferize for GPU Optimization Tech",
-      "AI 'Agent Orchestration' Is the Hottest Skill on Wall Street, Demand Up 1,721%",
-      "Boeing Engineers Ratify Contract, Averting Strike That Would Have Halted 777X Certification",
-      "Broadcom Lines Up $60B in Debt to Finance Anthropic's AI Chip Appetite",
-      "OpenAI Fires Three Safety Researchers for Sharing Data with Outside Group",
-      "TSMC Exploring Partnership with Musk's Terafab in Texas",
-      "Toshiba Plans to Double HDD Output, Crushing Storage Stocks",
-      "OpenAI's Rogue AI Agent Hack Fallout Continues",
-      "G7 to Release 100 Million Barrels of Oil and Diesel Over Four Months",
-      "Weak Jobs Report Adds to Republican Midterm Headwinds",
-      "Supreme Court Term Opens with High-Stakes Religion, Guns, and Climate Cases",
-      "FTC Approves Final Consent Orders on Zillow-Redfin, Ascension-AmSurg, Beretta-Ruger",
-      "Trump's Top National Security Aides Meet at Camp David on Iran and Yemen"
+    "2026-10-04": [
+      "FTC Settles Zillow-Redfin Antitrust Case, Requires Redfin to Re-Enter Rental Market",
+      "FTC Restricts Beretta Board Role in Ruger Stake Build-Up",
+      "Homeward Raises $120M Series D as Real Estate Tech Funding Rebounds",
+      "IPO Window Narrows: Anthropic Delays, Broader Listings Pause",
+      "Market Breadth Deteriorates Even as S&P Nears Highs",
+      "OpenAI Safety Leader Resigns, Calls Company Culture 'Broken'",
+      "OpenAI's Jalape\u00f1o Inference Chip: Nine Months from Design to Tape-Out",
+      "Google Limits Free Gemini Users to Cheaper Model",
+      "Toshiba Doubles HDD Capacity for AI Data Centers",
+      "Brazil Votes Today in High-Stakes Presidential Election",
+      "Supreme Court Term Opens Monday with Religion, Guns, Climate Cases",
+      "California Voters to Decide on Billionaire Tax",
+      "Trump's $100 Checks for Seniors; Camp David Meeting on Iran"
     ]
   },
-  "last_run": "2026-10-03T18:08:58+00:00"
+  "last_run": "2026-10-04T11:03:46+00:00"
 }
