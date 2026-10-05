@@ -19,26 +19,27 @@
     "eia:Natural gas storage (Bcf)": "2026-09-25"
   },
   "sent": {
-    "morning": "2026-10-04",
+    "morning": "2026-10-05",
     "close": "2026-09-30",
     "weekly": "2026-10-03"
   },
   "morning_headlines": {
-    "2026-10-04": [
-      "FTC Settles Zillow-Redfin Antitrust Case, Requires Redfin to Re-Enter Rental Market",
-      "FTC Restricts Beretta Board Role in Ruger Stake Build-Up",
-      "Homeward Raises $120M Series D as Real Estate Tech Funding Rebounds",
-      "IPO Window Narrows: Anthropic Delays, Broader Listings Pause",
-      "Market Breadth Deteriorates Even as S&P Nears Highs",
-      "OpenAI Safety Leader Resigns, Calls Company Culture 'Broken'",
-      "OpenAI's Jalape\u00f1o Inference Chip: Nine Months from Design to Tape-Out",
-      "Google Limits Free Gemini Users to Cheaper Model",
-      "Toshiba Doubles HDD Capacity for AI Data Centers",
-      "Brazil Votes Today in High-Stakes Presidential Election",
-      "Supreme Court Term Opens Monday with Religion, Guns, Climate Cases",
-      "California Voters to Decide on Billionaire Tax",
-      "Trump's $100 Checks for Seniors; Camp David Meeting on Iran"
+    "2026-10-05": [
+      "BT Rescues TalkTalk from Collapse in \u00a3400m Administration Deal",
+      "Huawei and Qualcomm Sign Broad Patent Cross-License Covering 5G and AI",
+      "ECARX Completes Acquisition of Flyme Software, Bringing OS In-House",
+      "Wall Street Hiring Surge for 'Agent Orchestration' Skills as Banks Deploy AI Agents",
+      "Morgan Stanley Upgrades Wells Fargo to Overweight, Sets $102 Target",
+      "FTC Settles Zillow-Redfin Antitrust Suit, Clears Conditional Merger",
+      "OpenAI Safety Leader David Robinson Quits, Calls Company Culture 'Broken'",
+      "OpenAI to Test Visual Ads in ChatGPT This Month",
+      "Munich-Based RobCo Hits $1 Billion Valuation on $40M Share Sale",
+      "Trump Names Intelligence Chief Jay Clayton as White House 'AI Czar'",
+      "Brazil Runoff Set: Bolsonaro Leads Lula 47-45%, Markets Brace for Oct 25 Vote",
+      "Supreme Court Opens Term with Blockbuster Climate Liability Case",
+      "U.S. Evacuates B-1 Bombers from UK Base Amid Iran Threats",
+      "Fed Holds Steady; Markets Cut October Hike Odds After Weak Payrolls"
     ]
   },
-  "last_run": "2026-10-04T11:03:46+00:00"
+  "last_run": "2026-10-05T11:04:04+00:00"
 }
