@@ -19,29 +19,27 @@
     "eia:Natural gas storage (Bcf)": "2026-09-25"
   },
   "sent": {
-    "morning": "2026-10-07",
+    "morning": "2026-10-08",
     "close": "2026-10-07",
     "weekly": "2026-10-03"
   },
   "morning_headlines": {
-    "2026-10-07": [
-      "Paramount-WBD Merger Closes: Skydance Is Born at $111B Enterprise Value",
-      "CD&R and McKesson Take Option Care Health Private for $5.8B",
-      "Third Coast Bancshares to Merge with Great Plains Bancshares, Creating $9B+ Asset Regional Bank",
-      "Disruptive Investors Raises $7.5B for $10B Late-Stage Fund",
-      "Q3 2026 Posts Record Billion-Dollar Rounds as Global AI Race Heats Up",
-      "FTC Secures Settlement Resolving Antitrust Concerns in Zillow-Redfin Agreement",
-      "DeepSeek Nears $12B Funding Round Led by Tencent and CATL",
-      "SpaceX Seeks $40B Debt for Nvidia Chips in Landmark AI Infrastructure Financing",
-      "Musk Rules Out TSMC Operating Role at Terafab; Intel Remains Core Partner",
-      "Finland Orders Google to Halt Data Center Construction Pending Environmental Review",
-      "Common Sense Media Calls ChatGPT for Teens an 'Unacceptable Risk'",
-      "India's RBI Raises Repo Rate 25bp to 5.50%, First Hike Since 2023",
-      "US Trade Deficit Hits $105.6B in August, Widest Since March 2025",
-      "Israel Marks Third Anniversary of Oct. 7 Attacks; Netanyahu Faces Reckoning in Election",
-      "Trump to Speak with Putin About Plague Lab Worker Death in Russia",
-      "Midterm Polls Show Democratic Edge, But Gas Prices and Iran War Weigh on GOP"
+    "2026-10-08": [
+      "Skyworks-Qorvo RF Mega-Merger Closes, Creating Mobile Chip Giant",
+      "ANTA Sports Becomes Largest PUMA Shareholder in \u20ac1.5B Block Trade",
+      "Century Communities Triples Dallas Footprint with HistoryMaker Homes",
+      "Drilling Tools International Expands Globally with Saltire/Foxley Buy",
+      "Morgan Stanley Sees $1.5T AI Infrastructure Financing Gap by 2028",
+      "Hedge Fund Borrowing Becomes Wall Street's Cash Cow",
+      "Anthropic Ships Claude Haiku 5.5 with 75% Price Cut, Heating Up Inference War",
+      "Fed Minutes Cite AI Capex as Driver of Goods Inflation",
+      "OpenAI's Math Breakthrough Points Beyond Math",
+      "Meta, Microsoft Reportedly Curb Employee Use of Claude AI",
+      "Fed Minutes Signal More Tightening Likely, But Timing Unclear",
+      "India's RBI Hikes 25 bps to 5.5%, First Increase Since 2023",
+      "FTC Secures Antitrust Settlement in Corteva Pesticide Case",
+      "Fl\u00e1vio Bolsonaro's Advance in Brazil Election Spooks Climate Investors"
     ]
   },
-  "last_run": "2026-10-08T01:21:05+00:00"
+  "last_run": "2026-10-08T11:04:05+00:00"
 }
