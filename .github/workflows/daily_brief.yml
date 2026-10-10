@@ -2,11 +2,11 @@ name: Daily Brief
 
 on:
   schedule:
-    - cron: '15 11 * * 1-5'   # Morning: 7:15 AM ET during daylight time
-    - cron: '15 12 * * 1-5'   # Morning: 7:15 AM ET during standard time
-    - cron: '45 20 * * 1-5'   # Close: 4:45 PM ET during daylight time
-    - cron: '45 21 * * 1-5'   # Close: 4:45 PM ET during standard time
-    - cron: '30 14 * * 6'     # Weekly: Saturday
+    - cron: '30 11 * * 1-5'   # Morning: 5:30 AM MT during daylight time
+    - cron: '30 12 * * 1-5'   # Morning: 5:30 AM MT during standard time
+    - cron: '0 22 * * 1-5'    # Close: 4:00 PM MT during daylight time
+    - cron: '0 23 * * 1-5'    # Close: 4:00 PM MT during standard time
+    - cron: '0 17 * * 6'      # Weekly: Saturday 11:00 AM MT (10:00 AM in winter), after WSO arrives
   workflow_dispatch:
     inputs:
       edition:
