@@ -5,6 +5,9 @@ Schedules run in UTC; the script checks Eastern time so daylight saving never sh
 """
 
 import os, json, smtplib, time, urllib.request, urllib.parse, urllib.error, xml.etree.ElementTree as ET, re, html as htmllib
+import imaplib, email, email.utils
+from email.header import decode_header, make_header
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -26,7 +29,9 @@ GMAIL_USER    = os.environ["GMAIL_USER"]
 GMAIL_PASS    = os.environ["GMAIL_APP_PASS"]
 
 MODEL           = "claude-opus-4-5"
-WEB_SEARCH_USES = {"morning": 10, "close": 8, "weekly": 10}   # live searches Claude may run per edition
+WEB_SEARCH_USES = {"morning": 10, "close": 8, "weekly": 10}
+NEWSLETTER_MODELS = ["claude-haiku-5-5", "claude-haiku-4-5"]   # pass 1 (cheap extraction); falls back if the first is unavailable
+NEWSLETTER_LABEL  = "Brief Sources"                             # Gmail label the filter applies   # live searches Claude may run per edition
 
 ET_TZ  = ZoneInfo("America/New_York")
 MT     = ZoneInfo("America/Denver")
@@ -1087,6 +1092,143 @@ SOURCE_NAMES = {
 #  GATHERERS (one per edition)
 # ══════════════════════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════════════════════
+#  NEWSLETTERS: read the "Brief Sources" Gmail label, extract high-impact items
+# ══════════════════════════════════════════════════════════════════════════
+
+DEEP_SOURCES = ("aswathdamodaran", "paripassu", "illiquidinsights", "gs.com", "wso-weekly", "stls.frb.org")
+
+def _decode(h):
+    try:
+        return str(make_header(decode_header(h or "")))
+    except Exception:
+        return h or ""
+
+def _email_text(msg):
+    plain, htm = "", ""
+    for part in (msg.walk() if msg.is_multipart() else [msg]):
+        ctype = part.get_content_type()
+        if part.get("Content-Disposition", "").startswith("attachment"):
+            continue
+        try:
+            payload = part.get_payload(decode=True)
+            if payload is None:
+                continue
+            text = payload.decode(part.get_content_charset() or "utf-8", errors="replace")
+        except Exception:
+            continue
+        if ctype == "text/plain" and not plain:
+            plain = text
+        elif ctype == "text/html" and not htm:
+            htm = text
+    text = plain if len(plain) > 500 else strip_html(htm) if htm else plain
+    text = re.sub(r"https?://\S+", "", text)                 # links add length, not meaning
+    text = re.sub(r"\[\]\(\)|\(\s*\)|\|", " ", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n\s*\n+", "\n", text)
+    cut = re.search(r"(unsubscribe|manage your email preferences|you received this email)", text, re.I)
+    if cut and cut.start() > len(text) * 0.6:                # drop the footer only if it's near the end
+        text = text[:cut.start()]
+    return text.strip()[:14000]
+
+def fetch_newsletters(hours, seen_ids, max_emails=60):
+    """Reads emails under the Brief Sources label from the last `hours` hours."""
+    out = []
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    try:
+        M = imaplib.IMAP4_SSL("imap.gmail.com")
+        M.login(GMAIL_USER, GMAIL_PASS)
+        M.select(f'"{NEWSLETTER_LABEL}"', readonly=True)
+        since = (cutoff - timedelta(days=1)).strftime("%d-%b-%Y")
+        typ, data = M.search(None, f"(SINCE {since})")
+        for num in (data[0].split() if data and data[0] else [])[-max_emails:]:
+            typ, msg_data = M.fetch(num, "(RFC822)")
+            msg = email.message_from_bytes(msg_data[0][1])
+            mid = (msg.get("Message-ID") or "").strip()
+            try:
+                sent = email.utils.parsedate_to_datetime(msg.get("Date"))
+            except Exception:
+                continue
+            if sent.tzinfo is None:
+                sent = sent.replace(tzinfo=timezone.utc)
+            if sent < cutoff or mid in seen_ids:
+                continue
+            sender = email.utils.parseaddr(msg.get("From"))[1].lower()
+            out.append({"id": mid, "sender": sender, "subject": _decode(msg.get("Subject")),
+                        "sent": sent.astimezone(ET_TZ).strftime("%a %b %d %I:%M %p ET"), "text": _email_text(msg)})
+        M.logout()
+    except Exception as ex:
+        print(f"    [Newsletters] IMAP read failed: {ex}")
+    print(f"    [Newsletters] {len(out)} new emails")
+    return out
+
+NEWSLETTER_EXTRACT_PROMPT = """You extract the most important content from one financial newsletter for a personal brief. Return JSON only, no other text.
+
+If it is a NEWS newsletter (market recap, deals roundup, daily briefing), return:
+{"type": "news", "items": [{"headline": "short", "detail": "1-3 sentences with the key numbers and the stated reason or cause", "section": "markets|macro|investing|high_finance|political|tech_ai|earnings", "impact": 1-5}]}
+Include only items with real market, economic, deal, or policy significance (impact 3+), up to 10. Impact guide: 5 = moves major indexes or a $10B+ deal or a Fed/policy shift; 4 = large-cap stock moving 5%+, $1B+ deal, major data surprise; 3 = notable but narrower. Skip ads, sponsored content, memes, job postings, and trivia.
+
+If it is an ANALYSIS piece (an essay or deep dive making an argument), return:
+{"type": "analysis", "title": "piece title", "author": "author or publication", "thesis": "the core argument in 2-3 sentences", "evidence": ["key data points or reasoning, up to 5"], "implications": "what it means if right, 1-2 sentences"}
+
+Keep exact numbers as written. Never add facts that are not in the newsletter."""
+
+def _call_newsletter_model(text):
+    for model in NEWSLETTER_MODELS:
+        payload = {"model": model, "max_tokens": 2000, "system": NEWSLETTER_EXTRACT_PROMPT,
+                   "messages": [{"role": "user", "content": text}]}
+        for attempt, delay in enumerate([10, 30, 0]):
+            try:
+                data = _post_claude(payload)
+                return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
+            except urllib.error.HTTPError as ex:
+                if ex.code in (400, 404):      # model unavailable, try the next one
+                    break
+                if ex.code in (429, 500, 502, 503, 529) and delay:
+                    time.sleep(delay)
+                    continue
+                raise
+    raise RuntimeError("no newsletter model available")
+
+def extract_newsletter(nl):
+    header = f"From: {nl['sender']}\nSubject: {nl['subject']}\nSent: {nl['sent']}\n\n"
+    try:
+        result = parse_json(_call_newsletter_model(header + nl["text"]))
+    except Exception as ex:
+        print(f"    [Newsletters] extraction failed for {nl['sender']} ({ex}); using trimmed text")
+        result = {"type": "raw", "text": nl["text"][:2500]}
+    result.update({"sender": nl["sender"], "subject": nl["subject"], "sent": nl["sent"]})
+    return result
+
+def gather_newsletters(edition, hours, state):
+    seen = set(state.get("newsletter_seen", []))
+    emails = fetch_newsletters(hours, seen, max_emails=200 if edition == "weekly" else 60)
+    is_deep = lambda e: any(k in e["sender"] for k in DEEP_SOURCES)
+    if edition == "weekly":   # weekly: deep-analysis pieces plus weekly wrap-ups
+        emails = [e for e in emails if is_deep(e) or "weekly" in e["subject"].lower()]
+    else:                     # daily: news only; essays wait for the weekly
+        emails = [e for e in emails if not is_deep(e)]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        extracted = list(pool.map(extract_newsletter, emails))
+    return extracted, [e["id"] for e in emails if e["id"]]
+
+def fmt_newsletters(items):
+    if not items:
+        return "None."
+    lines = []
+    for nl in items:
+        src = f"[{nl['sender']} · {nl['sent']}]"
+        if nl.get("type") == "analysis":
+            lines.append(f"{src} ANALYSIS: {nl.get('title', nl['subject'])} ({nl.get('author', '')})\n  Thesis: {nl.get('thesis', '')}\n"
+                         + "".join(f"  - {ev}\n" for ev in nl.get("evidence", [])) + f"  Implications: {nl.get('implications', '')}")
+        elif nl.get("type") == "news":
+            for it in sorted(nl.get("items", []), key=lambda x: -int(x.get("impact", 0) or 0)):
+                lines.append(f"{src} ({it.get('section', '?')}, impact {it.get('impact', '?')}) {it.get('headline', '')}: {it.get('detail', '')}")
+        else:
+            lines.append(f"{src} {nl['subject']}\n{nl.get('text', '')}")
+    return "\n".join(lines)
+
+
 def fetch_x_feeds_fast():
     """Stops early if the Nitter mirrors are all down, so a dead feed can't stall the run."""
     posts, misses = [], 0
@@ -1165,6 +1307,8 @@ def gather(edition, state):
     d["fedreg"]   = fetch_federal_register(congress_days)
     print("  → News feeds...")
     d.update(_news_block(news_hours))
+    print("  → Newsletters (Brief Sources label)...")
+    d["newsletters"], d["newsletter_ids"] = gather_newsletters(edition, {"morning": 72 if NOW.weekday() == 0 else 24, "close": 14, "weekly": 170}[edition], state)
     return d
 
 
@@ -1254,7 +1398,11 @@ DEAL_SCHEMA = """{"headline": "sharp headline", "parties": "Acquirer / Target", 
 STORY_SCHEMA = """{"headline": "sharp headline", "what": "1-2 sentences: what happened, specific", "why": "1-2 sentences: why it matters for markets, valuations, or competition", "watch": "1 sentence: what to watch next", "plain_english": "optional: simple explanation of any jargon, or empty string"}"""
 
 def _common_blocks(d):
-    return f"""=== MACRO DATA (🆕 = released since the last edition) ===
+    return f"""=== NEWSLETTER HIGHLIGHTS (pre-extracted from Konner's subscriptions; sorted by impact) ===
+Treat these as high-quality, curated sources. Include an item if its impact is high even when only one newsletter reported it. Merge duplicates across newsletters and with the feeds below so each story appears once. If a newsletter's number conflicts with the MARKET DATA blocks, use MARKET DATA.
+{fmt_newsletters(d.get('newsletters'))}
+
+=== MACRO DATA (🆕 = released since the last edition) ===
 {d['macro']}
 
 === NY FED FUNDING RATES ===
@@ -1763,6 +1911,7 @@ if __name__ == "__main__":
     send_email(subjects[edition], html)
 
     state.setdefault("sent", {})[edition] = DATE_KEY
+    state["newsletter_seen"] = (state.get("newsletter_seen", []) + data.get("newsletter_ids", []))[-500:]
     if edition == "morning":
         heads = [x.get("headline", "") for k in ("deals", "street", "tech_ai", "policy_politics") for x in brief.get(k) or []]
         state["morning_headlines"] = {DATE_KEY: [h for h in heads if h]}
