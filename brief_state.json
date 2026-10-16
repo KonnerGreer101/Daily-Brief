@@ -10,39 +10,38 @@
     "eia:Crude inventories ex-SPR (k bbl)": "2026-10-09",
     "fred:DFF": "2026-10-14",
     "fred:T10Y2Y": "2026-10-15",
-    "fred:DGS2": "2026-10-13",
+    "fred:DGS2": "2026-10-14",
     "fred:BAMLH0A0HYM2": "2026-10-14",
-    "fred:BAMLC0A0CM": "2026-10-13",
+    "fred:BAMLC0A0CM": "2026-10-14",
     "fred:UMCSENT": "2026-08-01",
     "fred:RSAFS": "2026-09-01",
     "fred:ICSA": "2026-10-10",
     "eia:Natural gas storage (Bcf)": "2026-10-09"
   },
   "sent": {
-    "morning": "2026-10-15",
+    "morning": "2026-10-16",
     "close": "2026-10-15",
     "weekly": "2026-10-10"
   },
   "morning_headlines": {
-    "2026-10-15": [
-      "Penske Automotive Goes Private at $16.3 Billion in Founder-Led Buyout",
-      "Clear Channel Outdoor Taken Private by Mubadala at $6.2 Billion",
-      "Ramp Hits $60 Billion Valuation, Fintech's Largest Private Round",
-      "Morgan Stanley Beats on Equities Trading, Wealth Revenue Hits $5.8 Billion",
-      "BlackRock AUM Nears $15.5 Trillion, EPS Beats by 14%",
-      "Bank of America Hit by $1.2 Billion AML Fine, Trading Miss",
-      "Anthropic Reports Cash-Flow Positive Quarter, IPO Looms",
-      "FTC Subpoenas OpenAI and Anthropic Over Safety Incidents",
-      "TSMC Profit Jumps 69% but Stock Slides on Sector Selloff",
-      "ASML Posts Record Quarter but Cannot Escape Chip Selloff",
-      "Apple Becomes Second Company to Close Above $5 Trillion",
-      "September CPI Hotter Than Expected, Fed Hike Odds Rise",
-      "CEO Confidence Falls Into Negative Territory",
-      "Musk Drives GOP Senate Spending with $158 Million September Donation",
-      "Oil Stays Elevated on Middle East Tensions"
+    "2026-10-16": [
+      "Proofpoint to buy Varonis for $6.3B, creating data-security giant",
+      "Penske Automotive to go private at $16.3B via founder-led buyout",
+      "GTCR and Elliott to take CCC Intelligent Solutions private for $6.1B",
+      "Fairfax Financial to acquire 60.7% of India's IDBI Bank for $5.6B",
+      "Bond investors dump AI-linked debt as CoreWeave CDS hits distressed levels",
+      "Gartner warns $3.5 trillion in AI infrastructure spending faces write-downs by 2030",
+      "TSMC posts sixth consecutive record quarter, but stock drops on downstream demand fears",
+      "Anthropic woos investors ahead of potential $2 trillion IPO amid market jitters",
+      "China adds 23 AI technologies to export control list, including LLMs and chip designs",
+      "Tesla reveals SpaceX-thruster Roadster that can flip in mid-air; production set for 2028",
+      "Ship attacks near Strait of Hormuz hit record high, slowing oil exports",
+      "Producer prices surge 6.3% YoY, largest gain since 2022",
+      "MAGA activists push Trump to consider martial law if midterms appear 'rigged'",
+      "EU vows to maintain Russia sanctions after Trump pivot"
     ]
   },
-  "last_run": "2026-10-16T00:52:28+00:00",
+  "last_run": "2026-10-16T11:34:19+00:00",
   "newsletter_seen": [
     "<010001a125e6446e-738d1260-25a4-4d11-ba65-f1fd8c0005ad-000000@email.amazonses.com>",
     "<20261010085755.47871346.656693@sailthru.com>",
@@ -102,6 +101,13 @@
     "<25.FE.49891.09211DA6@i-09d58df49531300c5.mta1vrest.sd.prd.sparkpost>",
     "<20261015151545.47954856.389366@sailthru.com>",
     "<118207075.1530661.1792094812777@lva2-app63214.prod.linkedin.com>",
-    "<20261015173507.47957024.383340@sailthru.com>"
+    "<20261015173507.47957024.383340@sailthru.com>",
+    "<20261015212923.47958580.383787@sailthru.com>",
+    "<6G3dWjwZQHKdCSb7gpUMBw@geopod-ismtpd-53>",
+    "<010001a1440c2601-83919398-0ed1-43dc-a25a-e416b20c9fa3-000000@email.amazonses.com>",
+    "<20261016054328.47959304.560057@sailthru.com>",
+    "<20261016.105125.81c2495f@mta7>",
+    "<9Jb0fG6kQ1mtCpRk_aR4-A@geopod-ismtpd-98>",
+    "<20261016072839.47961194.495439@sailthru.com>"
   ]
 }
