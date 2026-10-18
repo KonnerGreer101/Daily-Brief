@@ -487,7 +487,8 @@ def fetch_quotes(tickers, mode="session"):
                 else:
                     curr, prev = float(closes.iloc[-1]), float(closes.iloc[-2])
             pct = _pct(curr, prev)
-            out[sym] = {"name": name, "price": round(curr, 2), "change_pct": pct,
+            asof = closes.index[-1].date() if mode != "session" or not (closes.index[-1].date() == today_et and not market_done) else closes.index[-2].date()
+            out[sym] = {"name": name, "price": round(curr, 2), "change_pct": pct, "asof": asof.strftime("%a %b %d"),
                         "direction": "up" if pct > 0.05 else ("down" if pct < -0.05 else "flat")}
         except Exception as ex:
             print(f"    yfinance [{sym}]: {ex}")
@@ -526,7 +527,7 @@ def fmt_quotes(q):
         if sym == "CURVE":
             lines.append(f"• 10Y-3M spread: {i['price']:+.2f} pts{' (INVERTED)' if i.get('inverted') else ''}")
         else:
-            lines.append(f"• {i['name']}: {i['price']:,.2f} ({i['change_pct']:+.2f}%)")
+            lines.append(f"• {i['name']}: {i['price']:,.2f} ({i['change_pct']:+.2f}%)" + (f" [as of {i['asof']}]" if i.get("asof") else ""))
     return "\n".join(lines)
 
 def fmt_movers(m):
@@ -954,6 +955,41 @@ def fetch_edgar_deals(days_back=1, max_docs=6):
     print(f"    [EDGAR] {len(deals)} new merger 8-Ks, {len(other)} other deal filings")
     return deals, sorted(set(other))
 
+def fetch_edgar_earnings(tickers, day, max_docs=10):
+    """Earnings press releases (8-K Item 2.02) filed today for the given tickers: the company's own explanation."""
+    out = []
+    if not tickers:
+        return out
+    try:
+        hits = edgar_search('"Results of Operations and Financial Condition"', "8-K", day, day, size=100)
+        for h in hits:
+            src = h.get("_source", {})
+            if "2.02" not in (src.get("items") or []):
+                continue
+            names = " ".join(src.get("display_names") or [])
+            tk = next((t for t in tickers if f"({t})" in names or f"({t}," in names or f", {t})" in names), None)
+            if not tk or any(o["ticker"] == tk for o in out):
+                continue
+            adsh = src.get("adsh") or h.get("_id", "").split(":")[0]
+            cik = (src.get("ciks") or ["0"])[0]
+            try:
+                text = _edgar_press_release(cik, adsh, max_chars=5000)
+            except Exception as ex:
+                print(f"    [EDGAR earnings {tk}]: {ex}")
+                text = ""
+            if text:
+                out.append({"ticker": tk, "text": text})
+            if len(out) >= max_docs:
+                break
+            time.sleep(0.2)
+    except Exception as ex:
+        print(f"    [EDGAR earnings]: {ex}")
+    print(f"    [EDGAR earnings] {len(out)} press releases")
+    return out
+
+def fmt_edgar_earnings(items):
+    return "\n\n".join(f"• {i['ticker']} EARNINGS PRESS RELEASE (SEC 8-K): {i['text']}" for i in items) or "None found."
+
 def fmt_edgar(deals, other):
     parts = []
     for d in deals:
@@ -1096,7 +1132,20 @@ SOURCE_NAMES = {
 #  NEWSLETTERS: read the "Brief Sources" Gmail label, extract high-impact items
 # ══════════════════════════════════════════════════════════════════════════
 
-DEEP_SOURCES = ("aswathdamodaran", "paripassu", "illiquidinsights", "gs.com", "wso-weekly", "stls.frb.org")
+NEWSLETTER_NAMES = [   # sender fragment -> display name
+    ("macroglide", "MacroGlide"), ("execsum", "Exec Sum"), ("mike@axios", "Axios AM/PM"),
+    ("markets@axios", "Axios Markets"), ("macro@axios", "Axios Macro"), ("closer@axios", "Axios Closer"),
+    ("dan@axios", "Axios Pro Rata"), ("lucinda.shen@axios", "Axios Pro Rata"), ("saltlakecity@axios", "Axios Salt Lake City"),
+    ("thedailypeel", "The Daily Peel"), ("shortsqueez", "Short Squeez"), ("bloomberg", "Money Stuff (Matt Levine)"), ("ethmos", "Ethmos (AI summary)"),
+    ("thewallstreetrollup", "The Wall Street Rollup"), ("wso-weekly", "WSO Weekly"), ("aswathdamodaran", "Aswath Damodaran"),
+    ("paripassu", "Pari Passu"), ("illiquidinsights", "Illiquid Insights"), ("gs.com", "Goldman Sachs Briefings"),
+    ("stls.frb.org", "FRED (St. Louis Fed)"), ("linkedin", "LinkedIn News"), ("axios", "Axios"),
+]
+
+def newsletter_name(sender):
+    return next((name for frag, name in NEWSLETTER_NAMES if frag in sender), sender)
+
+DEEP_SOURCES = ("ethmos", "aswathdamodaran", "paripassu", "illiquidinsights", "gs.com", "wso-weekly", "stls.frb.org")
 
 def _decode(h):
     try:
@@ -1131,7 +1180,7 @@ def _email_text(msg):
         text = text[:cut.start()]
     return text.strip()[:14000]
 
-def fetch_newsletters(hours, seen_ids, max_emails=60):
+def fetch_newsletters(hours, seen_ids, max_emails=60, reread=()):
     """Reads emails under the Brief Sources label from the last `hours` hours."""
     out = []
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
@@ -1151,7 +1200,7 @@ def fetch_newsletters(hours, seen_ids, max_emails=60):
                 continue
             if sent.tzinfo is None:
                 sent = sent.replace(tzinfo=timezone.utc)
-            if sent < cutoff or mid in seen_ids:
+            if sent < cutoff or (mid in seen_ids and not any(k in (msg.get("From") or "").lower() for k in reread)):
                 continue
             sender = email.utils.parseaddr(msg.get("From"))[1].lower()
             out.append({"id": mid, "sender": sender, "subject": _decode(msg.get("Subject")),
@@ -1165,7 +1214,7 @@ def fetch_newsletters(hours, seen_ids, max_emails=60):
 NEWSLETTER_EXTRACT_PROMPT = """You extract the most important content from one financial newsletter for a personal brief. Return JSON only, no other text.
 
 If it is a NEWS newsletter (market recap, deals roundup, daily briefing), return:
-{"type": "news", "items": [{"headline": "short", "detail": "1-3 sentences with the key numbers and the stated reason or cause", "section": "markets|macro|investing|high_finance|political|tech_ai|earnings", "impact": 1-5}]}
+{"type": "news", "items": [{"headline": "short", "detail": "1-3 sentences with the key numbers and the stated reason or cause", "section": "markets|macro|investing|high_finance|political|tech_ai|earnings", "impact": 1-5, "original_source": "the outlet the newsletter credits for this item (e.g. Reuters, Bloomberg, WSJ, CNBC, a company press release), or empty string if none is named"}]}
 Include only items with real market, economic, deal, or policy significance (impact 3+), up to 10. Impact guide: 5 = moves major indexes or a $10B+ deal or a Fed/policy shift; 4 = large-cap stock moving 5%+, $1B+ deal, major data surprise; 3 = notable but narrower. Skip ads, sponsored content, memes, job postings, and trivia.
 
 If it is an ANALYSIS piece (an essay or deep dive making an argument), return:
@@ -1202,10 +1251,11 @@ def extract_newsletter(nl):
 
 def gather_newsletters(edition, hours, state):
     seen = set(state.get("newsletter_seen", []))
-    emails = fetch_newsletters(hours, seen, max_emails=200 if edition == "weekly" else 60)
+    emails = fetch_newsletters(hours, seen, max_emails=200 if edition == "weekly" else 60,
+                              reread=("news.bloomberg.com",) if edition == "weekly" else ())   # weekly re-reads Money Stuff for its analysis
     is_deep = lambda e: any(k in e["sender"] for k in DEEP_SOURCES)
     if edition == "weekly":   # weekly: deep-analysis pieces plus weekly wrap-ups
-        emails = [e for e in emails if is_deep(e) or "weekly" in e["subject"].lower()]
+        emails = [e for e in emails if is_deep(e) or "weekly" in e["subject"].lower() or "news.bloomberg.com" in e["sender"]]
     else:                     # daily: news only; essays wait for the weekly
         emails = [e for e in emails if not is_deep(e)]
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -1217,13 +1267,13 @@ def fmt_newsletters(items):
         return "None."
     lines = []
     for nl in items:
-        src = f"[{nl['sender']} · {nl['sent']}]"
+        src = f"[Newsletter: {newsletter_name(nl['sender'])} · {nl['sent']}]"
         if nl.get("type") == "analysis":
             lines.append(f"{src} ANALYSIS: {nl.get('title', nl['subject'])} ({nl.get('author', '')})\n  Thesis: {nl.get('thesis', '')}\n"
                          + "".join(f"  - {ev}\n" for ev in nl.get("evidence", [])) + f"  Implications: {nl.get('implications', '')}")
         elif nl.get("type") == "news":
             for it in sorted(nl.get("items", []), key=lambda x: -int(x.get("impact", 0) or 0)):
-                lines.append(f"{src} ({it.get('section', '?')}, impact {it.get('impact', '?')}) {it.get('headline', '')}: {it.get('detail', '')}")
+                lines.append(f"{src} ({it.get('section', '?')}, impact {it.get('impact', '?')}) {it.get('headline', '')}: {it.get('detail', '')}" + (f" (originally: {it['original_source']})" if it.get("original_source") else ""))
         else:
             lines.append(f"{src} {nl['subject']}\n{nl.get('text', '')}")
     return "\n".join(lines)
@@ -1274,6 +1324,7 @@ def gather(edition, state):
         print("  → Pre-market movers + insider buys...")
         d["premarket_movers"] = fetch_premarket_movers()
         d["insider_buys"] = fetch_insider_buys(days=4 if NOW.weekday() == 0 else 2)
+        d["close_headlines"] = state.get("close_headlines", {}).get("items", [])
         edgar_days, news_hours = (3 if NOW.weekday() == 0 else 1), (72 if NOW.weekday() == 0 else 24)
         congress_days = 3 if NOW.weekday() == 0 else 1
     elif edition == "close":
@@ -1283,8 +1334,7 @@ def gather(edition, state):
         d["screens"] = fetch_market_screens()
         print("  → Today's earnings...")
         d["earnings"] = fetch_earnings(DATE_KEY, DATE_KEY)
-        print("  → X feeds...")
-        d["x_posts"] = fetch_x_feeds_fast()
+        d["earnings_releases"] = fetch_edgar_earnings([i["ticker"] for i in d["earnings"]], DATE_KEY)
         d["morning_headlines"] = state.get("morning_headlines", {}).get(DATE_KEY, [])
         edgar_days, news_hours, congress_days = 0, 12, 1
     else:  # weekly
@@ -1366,36 +1416,47 @@ def parse_json(raw):
     return json.loads(s[start:end + 1])
 
 
-SYSTEM_PROMPT = """You write "The Daily Brief," a personal newsletter for Konner Greer, a Finance & Fintech student at the University of Utah (graduating Spring 2028) who is recruiting for front-office finance roles (investment banking / M&A) and investing his own money.
+SYSTEM_PROMPT = """You write "The Compiled Brief," a personal digest for Konner Greer, a Finance & Fintech student at the University of Utah. It compiles his newsletter subscriptions and news feeds into one email so he never has to read them separately.
 
-GOALS: make him (1) a sharper investor, (2) a better M&A analyst, and (3) fluent in what is happening across markets, deals, tech, macro, and policy.
+PURPOSE: keep him informed and curious about markets, the economy, investing, high finance (M&A, PE, banking), politics, and tech/AI. This is not recruiting prep. Daily editions inform; the weekly edition helps him understand themes and form his own views.
 
-VOICE:
-- Senior analyst briefing a junior: sharp, opinionated, specific. Synthesize and connect dots; do not just list headlines.
-- Plain English: whenever you use a finance term (EBITDA multiple, CVR, go-shop, basis points, term premium, etc.), the item's "plain_english" field explains it in one or two simple sentences a smart student can repeat.
-- High-level only. Skip minor stories. If a section has nothing important, return fewer items rather than padding.
-- Never use em dashes. Use commas, colons, or separate sentences.
+READER LEVEL: intro finance. He knows basics like what P/E and EBITDA stand for, but not market mechanics or deal jargon. Every time a technical term appears, explain it briefly in plain English in the same sentence, every time, not just the first time. Calibration examples:
+- "S&P futures are up 0.31% (futures trade before the open, so this points to stocks opening about 0.3% higher)."
+- "The price is about 9.3x EBITDA, meaning the buyer pays roughly $9.30 for every $1 of the company's annual operating profit."
+- "Yields rose 10 basis points (0.10 percentage points)."
+Explanations are one clause, never a paragraph. Niche jargon (DIP financing, term premium, squeeze-out) is simply translated into plain words without teaching it.
 
-ACCURACY (critical):
-- Use the provided data first. Use web search to confirm facts, fill in deal terms, find what moved a stock, or catch major news the feeds missed.
-- Never invent numbers, multiples, advisors, quotes, or dates. If a figure is not disclosed or you cannot verify it, say "not disclosed" or leave it out.
-- Numbers in the MARKET DATA blocks are authoritative; do not contradict them.
-- Each story appears in exactly one section.
+SELECTION (impact thresholds): include an item only if it clears at least one bar:
+- Markets: a major index moves 1%+, a $100B+ company moves 4%+, any $10B+ company moves 8%+, or a big move in yields (10+ bps), oil (3%+), gold (2%+), or the dollar.
+- Macro: Fed decisions, minutes, and Chair or key-official remarks; major data (jobs, CPI, PCE, GDP, retail sales, sentiment) especially when it surprises; meaningful changes in rate expectations.
+- Investing: notable shifts in valuations, flows, positioning, or a well-argued call from a credible source.
+- High finance: M&A, buyouts, IPOs, or financings of $1B+; major PE/bank news; notable restructurings.
+- Political: policy, sanctions, trade, elections, or geopolitical events that move markets or the economy.
+- Tech/AI: frontier AI labs, big tech, chips, data centers, and major funding ($500M+).
+A high-impact story reported by only one newsletter still belongs. If a section has nothing that clears the bar, return an empty list. Never pad.
 
-DEAL ANALYST LENS (for every deal):
-- Equity value vs enterprise value (and the difference: net debt), consideration (cash / stock / mix), premium to the unaffected price.
-- Implied multiple (EV/EBITDA or EV/Revenue) when disclosed or directly computable from disclosed figures; show the math briefly. Compare to what is typical for the sector when you can support it.
-- Structure features worth learning (CVR, go-shop, termination fees, financing, tender offer vs merger vote, regulatory risk), advisors if disclosed.
-- One "takeaway": the lesson an analyst should draw.
+SOURCES: every item gets a "sources" field naming where it came from: the newsletter name(s) (e.g. "Exec Sum, Axios Pro Rata") and the original outlet when known (e.g. "originally Reuters"), or the feed outlet shown in brackets (CNBC, Bloomberg, FT...), "SEC filing" for EDGAR, "company press release", or "web search: outlet". Format: "Exec Sum, Axios Pro Rata · originally Reuters". Never invent a source.
+
+ACCURACY:
+- Numbers in the MARKET DATA blocks are authoritative; if a newsletter disagrees, use MARKET DATA.
+- Never invent numbers, quotes, or dates. If unknown, leave it out.
+- Each story appears in exactly one section. Merge duplicates across sources into one item and list all sources.
+- When quoting a company's explanation, attribute it ("Delta says...") and note when the stock reaction or analysts suggest otherwise.
+
+STYLE: direct and readable. Never use em dashes; use commas, colons, or separate sentences.
 
 OUTPUT: valid JSON only. No markdown, no code fences, no text before or after the JSON object."""
 
-DEAL_SCHEMA = """{"headline": "sharp headline", "parties": "Acquirer / Target", "size": "deal value or 'not disclosed'", "type": "Strategic / Take-private / Merger of equals / Tender offer / etc.",
-       "what": "2-3 sentences: terms, consideration, premium, timing",
-       "analyst_lens": ["3-5 bullets: EV vs equity value, implied multiple with math, premium context, structure features, financing, advisors"],
-       "plain_english": "explain the key concept(s) simply", "takeaway": "the lesson for an analyst"}"""
+ITEM_SCHEMA = """{"headline": "short, specific headline", "summary": "1-3 sentences: what happened with key numbers, technical terms explained inline", "why": "1 sentence: why it matters, or empty string", "sources": "newsletter(s) · originally outlet"}"""
 
-STORY_SCHEMA = """{"headline": "sharp headline", "what": "1-2 sentences: what happened, specific", "why": "1-2 sentences: why it matters for markets, valuations, or competition", "watch": "1 sentence: what to watch next", "plain_english": "optional: simple explanation of any jargon, or empty string"}"""
+SECTIONS_SCHEMA = f"""{{
+    "markets": [{ITEM_SCHEMA}],
+    "macro": [{ITEM_SCHEMA}],
+    "investing": [{ITEM_SCHEMA}],
+    "high_finance": [{ITEM_SCHEMA}],
+    "political": [{ITEM_SCHEMA}],
+    "tech_ai": [{ITEM_SCHEMA}]
+  }}"""
 
 def _common_blocks(d):
     return f"""=== NEWSLETTER HIGHLIGHTS (pre-extracted from Konner's subscriptions; sorted by impact) ===
@@ -1444,43 +1505,47 @@ Treat these as high-quality, curated sources. Include an item if its impact is h
 def build_prompt(d):
     ed = d["edition"]
     if ed == "morning":
-        return f"""Today is {d['date']}. Write the MORNING EDITION (read before the 9:30 ET open). Target length: about 2,500 words of content (a 10-15 minute read).
+        return f"""Today is {d['date']}. Write the MORNING EDITION of The Compiled Brief, read around 5:30am MT before the 9:30 ET open.
 
-=== FUTURES (live) ===
+FOCUS: overnight and today. Do NOT recap yesterday's session; last night's close edition already covered it. Exceptions: news that broke after last night's edition (after-hours earnings, late-evening developments) belongs here as overnight news.
+Last night's close edition covered these headlines (skip unless there is a material update, then say what changed):
+{chr(10).join('• ' + h for h in d.get('close_headlines', [])) or 'None recorded.'}
+
+LENGTH: about 600-800 words total (a 5-minute read). Fewer items on quiet days.
+
+=== FUTURES (latest; "as of" shows the date of the last trade) ===
 {fmt_quotes(d['futures'])}
 
 === PRIOR SESSION CLOSE ===
 {fmt_quotes(d['quotes'])}
 
-=== LARGE-CAP EARNINGS TODAY ===
+=== LARGE-CAP EARNINGS TODAY (from the earnings calendar; filtered to major companies) ===
 {fmt_earnings(d['earnings'])}
 
-=== PRE-MARKET MOVERS (large-cap watchlist, vs prior close) ===
+=== PRE-MARKET MOVERS (large-cap watchlist) ===
 {fmt_movers(d['premarket_movers'])}
 
-=== INSIDER OPEN-MARKET PURCHASES (last few days, watchlist) ===
+=== INSIDER OPEN-MARKET PURCHASES ===
 {chr(10).join(d['insider_buys']) or 'None.'}
 
 {_common_blocks(d)}
 
 Return JSON with exactly these keys:
 {{
-  "opening": ["3-5 one-line bullets: the defining themes of the day, opinionated"],
-  "premarket": {{"bullets": ["3-5 bullets: where futures are and why, key overnight moves in yields, oil, dollar, Asia/Europe, and what it sets up for today"], "plain_english": "1-2 sentences"}},
-  "top_tier_event": "ONE line only if today has payrolls, CPI, PPI, PCE, GDP, or a Fed decision/minutes/Chair speech (say time ET and why it matters); otherwise empty string",
-  "stocks_to_watch": [{{"ticker": "TICKER", "company": "Name", "catalyst": "the specific catalyst today (earnings, deal, upgrade/downgrade, activist stake, insider buy, big pre-market move, product event)", "why": "1-2 sentences: why it could move and what it means", "watch": "the specific level, number, or signal to watch"}}  // 4-6 names; use web search for analyst rating changes and pre-market movers beyond the watchlist; a company can appear here AND in earnings_today only if the angle is different],
-  "earnings_today": [{{"ticker": "TICKER", "company": "Name", "timing": "Before open / After close", "expectations": "EPS and revenue consensus plus the one metric that matters most", "why_it_matters": "read-through for the stock, sector, or AI trade", "plain_english": "optional"}}],
-  "deals": [{DEAL_SCHEMA}  // 3-5 most important deals announced since the last edition],
-  "street": [{STORY_SCHEMA}  // 2-4 industry items: banks, dealmaking trends, hiring, fees, league tables, PE fundraising],
-  "tech_ai": [{STORY_SCHEMA}  // 3-5: frontier labs (OpenAI, Anthropic, Google/Gemini, xAI/Grok, Meta), Mag 7, AI infrastructure (chips, data centers, power)],
-  "policy_politics": [{STORY_SCHEMA}  // each item ALSO gets a "tag" field ("Geopolitics", "Congress", "White House", "Fed", "Elections", "Regulation"); 3-5, only market-moving or major world events]
+  "yesterday": "1-2 sentences of context on yesterday's session (e.g. 'Stocks closed higher on Microsoft's beat; the 10Y yield hit 5.24%'). Continuity only, no detail.",
+  "snapshot_note": "1 sentence in plain English on what futures and overnight markets suggest for today's open",
+  "sections": {SECTIONS_SCHEMA},
+  "earnings_today": [{{"ticker": "TICKER", "company": "Name", "timing": "Before open / After close", "expectations": "what analysts expect and the one thing to watch, terms explained", "sources": "earnings calendar · newsletter if previewed"}}],
+  "today_calendar": ["each important scheduled event today with time in MT and one clause on why it matters (data releases, Fed speakers, auctions); empty list if none"]
 }}
-earnings_today: include every company in the earnings list (it is pre-filtered to large caps); empty list if none."""
+earnings_today: include every company in the earnings list above (major companies only), plus any major company a newsletter previews for today. Empty list if none."""
     if ed == "close":
-        return f"""Today is {d['date']}. Write the CLOSING EDITION (read after the 4:00 ET close). Target length: about 2,300 words of content (a 10-15 minute read).
+        return f"""Today is {d['date']}. Write the CLOSE EDITION of The Compiled Brief, read around 4:00pm MT, two hours after the market close.
 
-This morning's edition already covered these headlines, so do NOT repeat them unless there is a material update (then say what changed):
+FOCUS: what happened today. This morning's edition already covered these headlines; do NOT repeat them unless there is a material update (then say what changed):
 {chr(10).join('• ' + h for h in d['morning_headlines']) or 'None recorded.'}
+
+LENGTH: about 400-700 words (a 2-4 minute read); up to 1,000 on heavy days (big earnings, Fed decisions). Fewer items on quiet days.
 
 === TODAY'S CLOSE (authoritative) ===
 {fmt_quotes(d['quotes'])}
@@ -1491,28 +1556,25 @@ This morning's edition already covered these headlines, so do NOT repeat them un
 === LARGE-CAP WATCHLIST MOVERS TODAY ===
 {fmt_movers(d['movers'])}
 
-=== LARGE-CAP EARNINGS TODAY (actuals may be missing for after-close reporters; use web search for results and after-hours reaction) ===
+=== LARGE-CAP EARNINGS TODAY (estimates and actuals; actuals may be missing for after-close reporters) ===
 {fmt_earnings(d['earnings'])}
+
+=== COMPANY EARNINGS PRESS RELEASES FILED WITH THE SEC TODAY (the company's own explanation) ===
+{fmt_edgar_earnings(d.get('earnings_releases', []))}
 
 {_common_blocks(d)}
 
-=== X FEED (curated accounts) ===
-{fmt_x_posts(d['x_posts'], 30)}
-
 Return JSON with exactly these keys:
 {{
-  "opening": ["2-4 one-line bullets: how the day ended and why"],
-  "recap": {{"bullets": ["4-6 bullets: indexes, sectors, yields, oil, dollar, and the WHY behind the tape"], "plain_english": "1-2 sentences on the most important concept from today"}},
-  "top_movers": {{"gainers": [{{"name": "TICKER (Company)", "change": "+x.x%", "reason": "1-2 sentences: the verified catalyst and whether the move looks durable"}}], "losers": [same shape], "most_active": [same shape]}},  // 4-5 gainers, 4-5 losers, 3 most active; use web search to verify each reason; say "no clear catalyst" rather than guess
-  "stocks_to_watch": [{{"ticker": "TICKER", "company": "Name", "catalyst": "why it is in play for TOMORROW (after-hours earnings, deal, activist stake, guidance, event)", "why": "1-2 sentences", "watch": "the specific signal to watch"}}  // 3-5 names],
-  "earnings_results": [{{"ticker": "TICKER", "company": "Name", "result": "EPS and revenue vs estimates, guidance", "why": "what drove it", "reaction": "stock move, including after hours if known", "plain_english": "optional"}}],
-  "macro": [{{"release": "name", "result": "actual vs prior (and vs expectations only if verified)", "takeaway": "what it means for the Fed, yields, and stocks"}}  // only data released today; empty list if none],
-  "late_breaking": [{STORY_SCHEMA}  // each item ALSO gets a "tag" field ("Deal", "Tech & AI", "Policy", "Politics", "Street"); 2-5 important items that broke during the trading day and were NOT in the morning edition; deals here use the analyst mindset in "why"],
-  "what_matters_next": [{{"item": "short title", "why": "1-2 sentences"}}  // 3-5 genuinely market-moving things to follow; no minor calendar items],
-  "trending_x": {{"has_content": true, "signals": [{{"account": "@handle", "signal": "what they said", "why_it_matters": "1 sentence", "image_url": "copy exact URL if the post has [HAS IMAGE: url], else empty"}}], "x_note": "1 sentence read on the feed"}}
+  "opening": "1-2 sentences: how the day ended and the main reason why",
+  "movers": {{"gainers": [{{"name": "TICKER (Company)", "change": "+x.x%", "reason": "the verified catalyst in one sentence, or 'no clear catalyst'"}}], "losers": [same shape]}},
+  "sections": {SECTIONS_SCHEMA},
+  "earnings_results": [{{"ticker": "TICKER", "company": "Name", "result": "beat or miss on EPS and revenue vs estimates, with numbers, plus any guidance change", "company_says": "management's explanation for the results, attributed (e.g. 'Delta says fuel costs rose 60%...'), from the press release or newsletters", "reaction": "stock move, including after hours if known", "pushback": "where analysts, newsletters, or the stock reaction suggest a different story than management's, or empty string", "sources": "SEC filing · newsletter(s)"}}]
 }}
-trending_x: use only posts from the X feed above; prioritize data and sharp takes. If there are no posts, set has_content to false and signals to []."""
-    return f"""Today is {d['date']}. Write the WEEKLY EDITION (Saturday recap of Monday-Friday). Target length: about 3,000 words of content.
+movers: up to 3 gainers and 3 losers that matter (large caps or big news), verified. earnings_results: every major company that reported today; use web search for after-close results if needed. Markets section covers the session recap (indexes, sectors, yields, oil) and why."""
+    return f"""Today is {d['date']}. Write the WEEKLY EDITION of The Compiled Brief (Saturday). This is the sit-down read: 10-15 minutes, about 2,000-2,500 words. Its job is to help Konner understand the week's underlying themes and form his own views, not to list news.
+
+The deep-analysis pieces in the NEWSLETTER HIGHLIGHTS (marked ANALYSIS: Damodaran, Matt Levine's Money Stuff, Goldman Sachs Briefings, Illiquid Insights, Pari Passu, WSO, and others) are the core of this edition. Build the themes around them, connect them to the week's news, and note where writers agree or disagree. Ethmos items are AI-generated summaries of podcasts and research: use them for ideas and leads, but do not rely on a figure or quote from Ethmos unless another source confirms it, and label it "per Ethmos" when used.
 
 === WEEKLY PERFORMANCE (authoritative, 5-session change) ===
 {fmt_quotes(d['quotes'])}
@@ -1530,17 +1592,14 @@ trending_x: use only posts from the X feed above; prioritize data and sharp take
 
 Return JSON with exactly these keys:
 {{
-  "opening": ["3-5 one-line bullets: the story of the week"],
-  "week_in_markets": {{"bullets": ["5-7 bullets: what drove stocks, rates, oil, dollar this week"], "plain_english": "1-2 sentences"}},
-  "movers": [{{"name": "TICKER (Company)", "change": "+x.x%", "reason": "one sentence"}}  // 4-6],
-  "top_deals": [{DEAL_SCHEMA}  // the 3-5 most important deals of the week],
-  "street": [{STORY_SCHEMA}  // 2-3 industry themes of the week],
-  "tech_ai": [{STORY_SCHEMA}  // 3-5 biggest tech and AI developments],
-  "macro": [{{"release": "name", "result": "actual vs prior", "takeaway": "what it means"}}  // the week's key data],
-  "positioning": {{"bullets": ["2-4 bullets: what speculator positioning says (crowded trades, shifts)"], "plain_english": "explain what futures positioning tells an investor"}},  // omit bullets if data unavailable
-  "policy_politics": [{STORY_SCHEMA}  // each item ALSO gets a "tag" field; 3-5],
-  "week_ahead": [{{"item": "short title", "why": "1-2 sentences"}}  // 3-6 genuinely important events next week, including major earnings from the list]
-}}"""
+  "opening": "2-3 sentences: the story of the week",
+  "week_in_markets": ["4-6 bullets: what drove stocks, rates, oil, and the dollar this week, terms explained"],
+  "themes": [{{"title": "theme title", "what_writers_argue": "3-5 sentences: the theses and evidence from the analysis pieces and news, naming who argues what", "what_it_could_mean": "2-4 sentences: second-order effects on rates, sectors, deals, and policy", "counterpoint": "2-3 sentences: the strongest case against", "what_to_watch": "1-2 sentences: specific signals or data that would confirm or break it", "concepts": "plain-English explanation of the 1-2 concepts central to this theme, or empty string", "sources": "writers and newsletters drawn on"}}],
+  "reading_list": [{{"title": "piece title", "author": "author or newsletter", "why_read": "1 sentence: why it is worth reading in full"}}],
+  "top_stories": [{ITEM_SCHEMA}],
+  "week_ahead": [{{"item": "short title", "why": "1 sentence"}}]
+}}
+themes: 2-4, built from the strongest analysis pieces. reading_list: only analysis pieces from the newsletters, 0-4. top_stories: the 4-6 most important news items of the week not already covered in a theme. week_ahead: 3-6 important events next week, including major earnings from the list."""
 
 def generate(d):
     raw = call_claude(SYSTEM_PROMPT, build_prompt(d), search_uses=WEB_SEARCH_USES[d["edition"]])
@@ -1738,38 +1797,59 @@ def li(label, text, sub=False):
     lab = f"<strong>{e(label)}:</strong> " if label else ""
     return f"<li{cls}>{lab}{e(text)}</li>"
 
-def story_cards(items, meta_key="tag"):
+def src_line(text):
+    return f'<div style="font-size:11px;color:#8a8a8a;margin-top:6px;font-style:italic">Source: {e(text)}</div>' if text else ""
+
+def item_cards(items):
     html = ""
     for it in items or []:
-        meta = f'<div class="bcard-meta">{e(it[meta_key])}</div>' if it.get(meta_key) else ""
-        body = li("What", it.get("what")) + li("Why", it.get("why"), True) + li("Watch", it.get("watch"), True) + li("In plain English", it.get("plain_english"), True)
-        html += f'<div class="bcard">{meta}<div class="bcard-hed">{e(it.get("headline",""))}</div><ul class="blist">{body}</ul></div>'
+        body = f'<p style="font-size:14px;line-height:1.65;color:#2a2a2a">{e(it.get("summary",""))}</p>'
+        if it.get("why"):
+            body += f'<p style="font-size:13px;line-height:1.6;color:#555;margin-top:4px"><strong>Why it matters:</strong> {e(it["why"])}</p>'
+        html += f'<div class="bcard"><div class="bcard-hed">{e(it.get("headline",""))}</div>{body}{src_line(it.get("sources"))}</div>'
     return html
 
-def deal_cards(items):
+SECTION_ORDER = [("markets", "Markets", "navy"), ("macro", "Macro & Economy", "green"), ("investing", "Investing", "teal"),
+                 ("high_finance", "High Finance", "copper"), ("political", "Political & Geopolitics", "red"), ("tech_ai", "Tech & AI", "purple")]
+
+def six_sections(secs, extra_markets=""):
     html = ""
-    for it in items or []:
-        meta = " · ".join(x for x in [it.get("type"), it.get("size")] if x)
-        lens = "".join(f"<li class=\"sub\">{e(x)}</li>" for x in it.get("analyst_lens") or [])
-        body = (li("Parties", it.get("parties")) + li("What", it.get("what"))
-                + (f'<li><strong>Analyst lens:</strong></li>{lens}' if lens else "")
-                + li("In plain English", it.get("plain_english"), True) + li("Takeaway", it.get("takeaway")))
-        html += (f'<div class="bcard"><div class="bcard-meta">{e(meta)}</div>'
-                 f'<div class="bcard-hed">{e(it.get("headline",""))}</div><ul class="blist">{body}</ul></div>')
+    for key, label, color in SECTION_ORDER:
+        body = (extra_markets if key == "markets" else "") + item_cards((secs or {}).get(key))
+        html += section(label, color, label, body)
     return html
 
 def earnings_cards(items, results=False):
     html = ""
     for it in items or []:
         if results:
-            body = li("Result", it.get("result")) + li("Why", it.get("why"), True) + li("Reaction", it.get("reaction"), True)
+            body = (li("Result", it.get("result")) + li("Company says", it.get("company_says"), True)
+                    + li("Reaction", it.get("reaction"), True) + li("Pushback", it.get("pushback"), True))
         else:
-            body = li("Expectations", it.get("expectations")) + li("Why it matters", it.get("why_it_matters"), True)
-        body += li("In plain English", it.get("plain_english"), True)
-        meta = e(it.get("timing", "")) if not results else ""
-        html += (f'<div class="bcard">{f"<div class=bcard-meta>{meta}</div>" if meta else ""}'
-                 f'<div class="bcard-hed">{e(it.get("company",""))} ({e(it.get("ticker",""))})</div><ul class="blist">{body}</ul></div>')
+            body = li("Timing", it.get("timing")) + li("What to expect", it.get("expectations"), True)
+        html += (f'<div class="bcard"><div class="bcard-hed">{e(it.get("company",""))} ({e(it.get("ticker",""))})</div>'
+                 f'<ul class="blist">{body}</ul>{src_line(it.get("sources"))}</div>')
     return html
+
+def theme_cards(items):
+    html = ""
+    for t in items or []:
+        body = (li("What the writers argue", t.get("what_writers_argue")) + li("What it could mean", t.get("what_it_could_mean"))
+                + li("Counterpoint", t.get("counterpoint")) + li("What to watch", t.get("what_to_watch"))
+                + li("Concepts", t.get("concepts"), True))
+        html += f'<div class="bcard"><div class="bcard-hed">{e(t.get("title",""))}</div><ul class="blist">{body}</ul>{src_line(t.get("sources"))}</div>'
+    return html
+
+def reading_list(items):
+    rows = "".join(f'<li><strong>{e(r.get("title",""))}</strong> ({e(r.get("author",""))}): {e(r.get("why_read",""))}</li>' for r in items or [])
+    return f'<ul class="blist">{rows}</ul>' if rows else ""
+
+def stale_note(quotes, label):
+    dates = {q.get("asof") for q in (quotes or {}).values() if q.get("asof")}
+    today = NOW.strftime("%a %b %d")
+    if dates and today not in dates:
+        return f'<div class="dash-note"><strong>Note:</strong> {e(label)} as of {e(max(dates))}; markets have not traded since.</div>'
+    return ""
 
 def mover_list(items):
     rows = "".join(f'<li><strong>{e(m.get("name",""))} {e(m.get("change",""))}:</strong> {e(m.get("reason",""))}</li>' for m in items or [])
@@ -1832,53 +1912,45 @@ def page(label, title, date_line, sub, lead, body, footer):
 
 def render(brief, d):
     ed = d["edition"]
+    n_nl = len(d.get("newsletters") or [])
+    footer = f"Compiled from {n_nl} newsletter{'s' if n_nl != 1 else ''} plus news feeds, market data, and SEC filings"
     if ed == "morning":
-        pm = brief.get("premarket", {})
-        top = brief.get("top_tier_event", "")
-        body = (section("Pre-Market", "navy", "Futures & Overnight",
-                        tiles(d["futures"], ["ES=F", "NQ=F", "YM=F", "RTY=F"])
-                        + tiles(d["quotes"], ["^TNX", "^VIX", "BZ=F", "GC=F", "DX-Y.NYB", "BTC-USD"])
-                        + render_bullets(pm.get("bullets")) + pe_note(pm.get("plain_english"))
-                        + (f'<div class="dash-note" style="margin-top:12px"><strong>Today:</strong> {e(top)}</div>' if top else ""))
-                + section("Stocks to Watch", "teal", "In Play Today", watch_stocks(brief.get("stocks_to_watch")))
+        snap = (tiles(d["futures"], ["ES=F", "NQ=F", "YM=F", "RTY=F"])
+                + tiles(d["quotes"], ["^TNX", "^VIX", "BZ=F", "GC=F", "DX-Y.NYB", "BTC-USD"])
+                + stale_note(d["futures"], "Futures")
+                + (f'<div class="dash-note"><strong>What it means:</strong> {e(brief["snapshot_note"])}</div>' if brief.get("snapshot_note") else ""))
+        cal = brief.get("today_calendar") or []
+        body = (section("Snapshot", "navy", "Before the Open", snap)
+                + six_sections(brief.get("sections"))
                 + section("Earnings Today", "gold", "Who Reports", earnings_cards(brief.get("earnings_today")))
-                + section("Deals & Street", "copper", "M&A With an Analyst Lens", deal_cards(brief.get("deals")))
-                + section("The Street", "slate", "Industry News", story_cards(brief.get("street")))
-                + section("Tech & AI", "purple", "Frontier Labs & Infrastructure", story_cards(brief.get("tech_ai")))
-                + section("Policy & Politics", "red", "What Moves Markets", story_cards(brief.get("policy_politics")), last=True))
-        return page("The Daily Brief · Morning Edition", "Good Morning, Konner.", TODAY,
-                    "Everything you need before the bell.", brief.get("opening"), body, "Morning")
+                + section("Today", "charcoal", "On the Calendar", render_bullets(cal), last=True))
+        lead = [f"Yesterday: {brief['yesterday']}"] if brief.get("yesterday") else []
+        return page("The Compiled Brief · Morning Edition", "Good Morning, Konner.", TODAY,
+                    "Overnight news and what's ahead today.", lead, body, footer)
     if ed == "close":
-        rc = brief.get("recap", {})
-        body = (section("The Close", "navy", "Market Recap",
-                        tiles(d["quotes"], ["^GSPC", "^IXIC", "^DJI", "^RUT", "^VIX", "^TNX", "^IRX", "CURVE", "BZ=F", "CL=F", "GC=F", "DX-Y.NYB"])
-                        + render_bullets(rc.get("bullets")) + pe_note(rc.get("plain_english")))
-                + section("Movers", "slate", "Biggest Moves & Why", top_movers(brief.get("top_movers")))
-                + section("Earnings Results", "gold", "Beat or Miss", earnings_cards(brief.get("earnings_results"), results=True))
-                + section("Macro", "green", "Today's Data", macro_cards(brief.get("macro")))
-                + section("Late-Breaking", "copper", "What Broke During the Session", story_cards(brief.get("late_breaking")))
-                + section("Stocks to Watch", "teal", "In Play Tomorrow", watch_stocks(brief.get("stocks_to_watch")))
-                + section("What Matters Next", "charcoal", "Only the Big Stuff", watch_list(brief.get("what_matters_next")))
-                + section("Trending on X", "indigo", "The Feed", x_section(brief.get("trending_x")), last=True))
-        return page("The Daily Brief · Closing Edition", "Good Evening, Konner.", TODAY,
-                    "How the day ended, and what matters next.", brief.get("opening"), body, "Close")
-    wm = brief.get("week_in_markets", {})
+        mv = brief.get("movers") or {}
+        movers_html = "".join(f'<div class="bcard-meta" style="margin-top:10px">{lab}</div>' + mover_list(mv.get(k))
+                              for k, lab in [("gainers", "Top Gainers"), ("losers", "Top Losers")] if mv.get(k))
+        snap = (tiles(d["quotes"], ["^GSPC", "^IXIC", "^DJI", "^RUT", "^VIX", "^TNX", "BZ=F", "CL=F", "GC=F", "DX-Y.NYB"])
+                + stale_note(d["quotes"], "Prices"))
+        body = (section("Snapshot", "navy", "At the Close", snap)
+                + six_sections(brief.get("sections"), extra_markets=movers_html)
+                + section("Earnings", "gold", "Results and Reasons", earnings_cards(brief.get("earnings_results"), results=True), last=True))
+        lead = [brief["opening"]] if brief.get("opening") else []
+        return page("The Compiled Brief · Close Edition", "Good Evening, Konner.", TODAY,
+                    "What happened today, compiled.", lead, body, footer)
     body = (section("The Week", "navy", "Markets in Review",
                     tiles(d["quotes"], ["^GSPC", "^IXIC", "^DJI", "^RUT", "^VIX", "^TNX", "BZ=F", "GC=F", "DX-Y.NYB", "BTC-USD"])
-                    + render_bullets(wm.get("bullets")) + pe_note(wm.get("plain_english")))
-            + section("Movers", "slate", "Biggest Moves of the Week", mover_list(brief.get("movers")))
-            + section("Deals & Street", "copper", "Deals of the Week", deal_cards(brief.get("top_deals")))
-            + section("The Street", "slate", "Industry Themes", story_cards(brief.get("street")))
-            + section("Tech & AI", "purple", "The Week in AI", story_cards(brief.get("tech_ai")))
-            + section("Macro", "green", "The Week's Data", macro_cards(brief.get("macro"))
-                      + (render_bullets((brief.get("positioning") or {}).get("bullets")) + pe_note((brief.get("positioning") or {}).get("plain_english"))
-                         if (brief.get("positioning") or {}).get("bullets") else ""))
-            + section("Policy & Politics", "red", "What Moved Markets", story_cards(brief.get("policy_politics")))
-            + section("Week Ahead", "charcoal", "Only the Big Stuff", watch_list(brief.get("week_ahead")), last=True))
+                    + render_bullets(brief.get("week_in_markets")))
+            + section("Themes", "copper", "Understanding the Week", theme_cards(brief.get("themes")))
+            + section("Reading List", "teal", "Worth Reading in Full", reading_list(brief.get("reading_list")))
+            + section("Top Stories", "slate", "What Else Mattered", item_cards(brief.get("top_stories")))
+            + section("Week Ahead", "charcoal", "What's Next", watch_list(brief.get("week_ahead")), last=True))
     mon = NOW - timedelta(days=NOW.weekday())
-    return page("The Weekly Brief · Saturday Edition", "The Week in Review.",
+    lead = [brief["opening"]] if brief.get("opening") else []
+    return page("The Compiled Brief · Weekly Edition", "The Week in Review.",
                 f"Week of {mon.strftime('%b %d')} to {(mon + timedelta(days=4)).strftime('%b %d')}",
-                "Read it once, sound sharp all weekend.", brief.get("opening"), body, "Weekly")
+                "Sit down with this one.", lead, body, footer)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1905,15 +1977,18 @@ if __name__ == "__main__":
     brief = generate(data)
     print("\n[3/3] Rendering & sending...")
     html = render(brief, data)
-    subjects = {"morning": f"☀️ Morning Brief · {NOW.strftime('%a %b %d')}",
-                "close":   f"🌙 Closing Brief · {NOW.strftime('%a %b %d')}",
-                "weekly":  f"📊 Weekly Brief · Week of {(NOW - timedelta(days=NOW.weekday())).strftime('%b %d')}"}
+    subjects = {"morning": f"🗞️ Compiled Brief · Morning · {NOW.strftime('%a %b %d')}",
+                "close":   f"🗞️ Compiled Brief · Close · {NOW.strftime('%a %b %d')}",
+                "weekly":  f"🗞️ Compiled Brief · Weekly · Week of {(NOW - timedelta(days=NOW.weekday())).strftime('%b %d')}"}
     send_email(subjects[edition], html)
 
     state.setdefault("sent", {})[edition] = DATE_KEY
     state["newsletter_seen"] = (state.get("newsletter_seen", []) + data.get("newsletter_ids", []))[-500:]
+    heads = [x.get("headline", "") for items in (brief.get("sections") or {}).values() for x in items or []]
+    heads = [h for h in heads if h]
     if edition == "morning":
-        heads = [x.get("headline", "") for k in ("deals", "street", "tech_ai", "policy_politics") for x in brief.get(k) or []]
-        state["morning_headlines"] = {DATE_KEY: [h for h in heads if h]}
+        state["morning_headlines"] = {DATE_KEY: heads}
+    elif edition == "close":
+        state["close_headlines"] = {"date": DATE_KEY, "items": heads}
     save_state(state)
     print("\n✅ Done!\n")
