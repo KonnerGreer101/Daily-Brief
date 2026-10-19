@@ -8,11 +8,11 @@
     "bls:CES0500000003": "September 2026",
     "bls:JTS000000000000000JOL": "August 2026",
     "eia:Crude inventories ex-SPR (k bbl)": "2026-10-09",
-    "fred:DFF": "2026-10-15",
-    "fred:T10Y2Y": "2026-10-16",
+    "fred:DFF": "2026-10-16",
+    "fred:T10Y2Y": "2026-10-19",
     "fred:DGS2": "2026-10-15",
-    "fred:BAMLH0A0HYM2": "2026-10-15",
-    "fred:BAMLC0A0CM": "2026-10-15",
+    "fred:BAMLH0A0HYM2": "2026-10-16",
+    "fred:BAMLC0A0CM": "2026-10-16",
     "fred:UMCSENT": "2026-08-01",
     "fred:RSAFS": "2026-09-01",
     "fred:ICSA": "2026-10-10",
@@ -20,7 +20,7 @@
   },
   "sent": {
     "morning": "2026-10-19",
-    "close": "2026-10-18",
+    "close": "2026-10-19",
     "weekly": "2026-10-17"
   },
   "morning_headlines": {
@@ -40,7 +40,7 @@
       "Data center capacity to surge 50GW+ in 2027"
     ]
   },
-  "last_run": "2026-10-19T18:48:25+00:00",
+  "last_run": "2026-10-19T22:04:22+00:00",
   "newsletter_seen": [
     "<010001a125e6446e-738d1260-25a4-4d11-ba65-f1fd8c0005ad-000000@email.amazonses.com>",
     "<20261010085755.47871346.656693@sailthru.com>",
@@ -128,24 +128,33 @@
     "<20261019062516.47983631.575419@sailthru.com>",
     "<20261019.103044.72f32ed4@mta19>",
     "<HJ4mDaPZRVWf9e2Zaa3j9A@geopod-ismtpd-61>",
-    "<20261019072904.47984451.536123@sailthru.com>"
+    "<20261019072904.47984451.536123@sailthru.com>",
+    "<20261019082913.47984957.41521@sailthru.com>",
+    "<20261019094329.47985858.245173@sailthru.com>",
+    "<20261019115821.47988122.313706@sailthru.com>",
+    "<E5.E5.25730.65166DA6@i-0ef1a37690c913f62.mta1vrest.sd.prd.sparkpost>",
+    "<20261019150055.47990545.424750@sailthru.com>",
+    "<20261019170407.47991921.438541@sailthru.com>"
   ],
   "close_headlines": {
-    "date": "2026-10-18",
+    "date": "2026-10-19",
     "items": [
-      "S&P 500 slides 1.1% as AI stocks extend selloff, VIX spikes 21%",
-      "Energy and defense outperform as geopolitical risk rises",
-      "Fed rate decision looms as markets debate October hike",
-      "Housing data and PMI due this week",
-      "Big earnings week: Meta, Tesla, P&G, and Exxon report",
-      "SoftBank in early talks to acquire Allied Universal for up to $30B",
-      "CoreWeave credit concerns deepen as CDS hits record",
-      "Trump waives Russia sanctions under Graham Act, draws bipartisan backlash",
-      "Ukraine launches largest drone attack on St. Petersburg",
-      "Trump approval hits 33% as midterm polls favor Democrats",
-      "Industry expects only 7-10 of hundreds of AI neoclouds to survive",
-      "Microsoft exits UK data center deal as Nscale faces IPO valuation pushback",
-      "Anthropic commits 5% of shares to Public Benefit Fund"
+      "Nasdaq leads with 1.1% gain as chip rebound extends",
+      "Yields rise, oil sinks 3% on Russia sanctions waiver",
+      "Datadog jumps 5.4% on Bernstein reversal",
+      "China Q3 GDP beats but imbalances grow",
+      "French bond yields jump amid violent protests",
+      "Matt Levine on AI and who gets society's share",
+      "Tradeweb to buy Trumid for $1.97 billion",
+      "Cardinal Infrastructure acquires Hughes Brothers for $357.5 million",
+      "Trump waived Russia sanctions, Zelenskyy slams decision",
+      "Saudi FII summit postponed after Houthi attacks",
+      "Supreme Court to hear home distilling challenge",
+      "Tenstorrent raises $1.5 billion at $6.2 billion valuation",
+      "Anthropic commits 5% of equity to public benefit fund",
+      "Nscale, Anthropic in talks for second $45 billion compute deal",
+      "Meta details gigawatt-scale Ohio supercluster",
+      "US bans DeepSeek AI from government use"
     ]
   }
 }
