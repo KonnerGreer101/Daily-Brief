@@ -19,29 +19,28 @@
     "eia:Natural gas storage (Bcf)": "2026-10-16"
   },
   "sent": {
-    "morning": "2026-10-23",
+    "morning": "2026-10-26",
     "close": "2026-10-23",
     "weekly": "2026-10-24"
   },
   "morning_headlines": {
-    "2026-10-23": [
-      "Oil pushes above $114 Brent as Middle East tensions persist",
-      "Moody's France rating decision due after markets close",
-      "CalPERS slashes Big Tech holdings by 26% amid AI valuation doubts",
-      "Diesel at $6.32 and gasoline at $4.29 as energy costs squeeze the economy",
-      "Airfares hit record high, up 22% year over year",
-      "Manufacturing recovery concentrated in advanced sectors",
-      "Blackstone cuts real estate valuations as higher rates pressure returns",
-      "Barclays to cut 5,000 jobs as AI reshapes operations",
-      "American Airlines widens 2026 loss forecast despite record revenue",
-      "Trump announces $8 billion in farm aid as farmers face spiked diesel costs",
-      "DOJ investigates Trump ally Corey Lewandowski over DHS advisory role",
-      "Warhound raises $200M to clone and gene-edit military dogs",
-      "Moderna shares plunge 18% after cancer vaccine data leaks on social media",
-      "DeepSeek and MiniMax win China approval to open-source AI models overseas"
+    "2026-10-26": [
+      "Oil retreats nearly 2% as U.S.-Iran diplomacy hopes ease tensions",
+      "Meta launches $35B equity offering, plans up to $95B in total financing",
+      "Brazil ETF plunges nearly 20% after Lula wins presidential runoff",
+      "Fed decision Wednesday; markets expect no change",
+      "Core PCE and Q3 GDP due Wednesday and Thursday",
+      "Moody's holds France at Aa3, avoids downgrade (update)",
+      "AI trade faces funding and regulatory headwinds",
+      "EQT to acquire Range Resources in $50B+ all-stock deal",
+      "U.S. intelligence warns of advanced Iranian plots against diplomats",
+      "Israeli election Tuesday: polls show deadlock",
+      "Meta faces $42B in recent legal penalties and settlements",
+      "Cybersecurity executives warn of AI-enabled hacking 'vulnerability tsunami'",
+      "Elon Musk warns on neocloud financing troubles"
     ]
   },
-  "last_run": "2026-10-24T19:26:27+00:00",
+  "last_run": "2026-10-26T11:33:13+00:00",
   "newsletter_seen": [
     "<010001a125e6446e-738d1260-25a4-4d11-ba65-f1fd8c0005ad-000000@email.amazonses.com>",
     "<20261010085755.47871346.656693@sailthru.com>",
@@ -202,7 +201,17 @@
     "<s2DEyF6YS9OH4VkNq8y5fg@geopod-ismtpd-80>",
     "<8A.E6.38356.B548BDA6@i-05272f9e3e1046fbd.mta1vrest.sd.prd.sparkpost>",
     "<010001a16dff4b18-a46981ea-f952-4fa0-8b69-38728baa2b64-000000@email.amazonses.com>",
-    "<20261024.162308.afe1fc6b@mta11>"
+    "<20261024.162308.afe1fc6b@mta11>",
+    "<010001a16d3f05c7-cc401fe5-db1c-45da-a56e-8280f35cdd57-000000@email.amazonses.com>",
+    "<20261024085907.48079962.568005@sailthru.com>",
+    "<20261025092935.48085543.606540@sailthru.com>",
+    "<010001a173f105d6-95d1aada-9998-4c27-afb6-753edf0d3126-000000@email.amazonses.com>",
+    "<20261026.000303.e0f25d28@mta32>",
+    "<DD02rO2kQT-FaMK52rx38A@geopod-ismtpd-14>",
+    "<20261026055733.48089456.680294@sailthru.com>",
+    "<Ve-ku_xMTaikKKsPnSIYhA@geopod-ismtpd-73>",
+    "<20261026.105116.f4d8dff3@mta23>",
+    "<20261026072851.48091164.516415@sailthru.com>"
   ],
   "close_headlines": {
     "date": "2026-10-23",
