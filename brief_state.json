@@ -7,12 +7,12 @@
     "bls:LNS14000000": "September 2026",
     "bls:CES0500000003": "September 2026",
     "bls:JTS000000000000000JOL": "August 2026",
-    "eia:Crude inventories ex-SPR (k bbl)": "2026-10-16",
-    "fred:DFF": "2026-10-26",
-    "fred:T10Y2Y": "2026-10-27",
-    "fred:DGS2": "2026-10-26",
-    "fred:BAMLH0A0HYM2": "2026-10-26",
-    "fred:BAMLC0A0CM": "2026-10-26",
+    "eia:Crude inventories ex-SPR (k bbl)": "2026-10-23",
+    "fred:DFF": "2026-10-27",
+    "fred:T10Y2Y": "2026-10-28",
+    "fred:DGS2": "2026-10-27",
+    "fred:BAMLH0A0HYM2": "2026-10-27",
+    "fred:BAMLC0A0CM": "2026-10-27",
     "fred:UMCSENT": "2026-09-01",
     "fred:RSAFS": "2026-09-01",
     "fred:ICSA": "2026-10-17",
@@ -20,7 +20,7 @@
   },
   "sent": {
     "morning": "2026-10-28",
-    "close": "2026-10-27",
+    "close": "2026-10-28",
     "weekly": "2026-10-24"
   },
   "morning_headlines": {
@@ -38,7 +38,7 @@
       "OpenAI launches GPT-6.1 Terra at half the price of prior model"
     ]
   },
-  "last_run": "2026-10-28T18:26:57+00:00",
+  "last_run": "2026-10-28T22:03:38+00:00",
   "newsletter_seen": [
     "<010001a125e6446e-738d1260-25a4-4d11-ba65-f1fd8c0005ad-000000@email.amazonses.com>",
     "<20261010085755.47871346.656693@sailthru.com>",
@@ -237,28 +237,32 @@
     "<20261028.104135.3d077129@mta25>",
     "<sUKDOhb_TfCDJKBbkML5AQ@geopod-ismtpd-6>",
     "<20261028.105142.99c12e70@mta13>",
-    "<20261028072842.48132227.506962@sailthru.com>"
+    "<20261028072842.48132227.506962@sailthru.com>",
+    "<20261028082911.48132985.34919@sailthru.com>",
+    "<20261028095637.48134282.139708@sailthru.com>",
+    "<20261028115921.48136160.544184@sailthru.com>",
+    "<9E.AD.19104.03832EA6@i-02644287eb44601db.mta1vrest.sd.prd.sparkpost>",
+    "<20261028151527.48140045.454399@sailthru.com>",
+    "<20261028174835.48142300.366958@sailthru.com>"
   ],
   "close_headlines": {
-    "date": "2026-10-27",
+    "date": "2026-10-28",
     "items": [
-      "Tech-led rally lifts indexes as AI infrastructure names surge",
-      "Energy stocks slump as Brent crude posts largest decline in months",
-      "Treasury yields tick higher ahead of Fed decision",
-      "Consumer confidence rebounds to 91.7, highest since June",
-      "AI-linked computer orders surge 27% from a year ago, fastest pace since 1997",
-      "Durable goods orders rise 1.8% in September on aircraft demand",
-      "Holiday spending expected to top $1 trillion for first time, but inflation driving much of it",
-      "DoorDash in advanced talks to acquire Instacart for $17 billion",
-      "Ares Capital to acquire MidCap Financial for $2.6 billion (update: full terms disclosed)",
-      "Renasant Corp to acquire Commercial Holding Company for $142 million",
-      "EnerSys to acquire Ultralife for $320 million in defense battery deal",
-      "Israeli voter turnout hits 53-year high in election that may unseat Netanyahu",
-      "U.S. granting visa to Fl\u00e1vio Bolsonaro after Brazil election loss",
-      "Anthropic S-1 deep dive: $132 billion cash pile challenges 'desperate for capital' narrative",
-      "Physical Intelligence in talks to raise $1B+ at ~$20 billion valuation",
-      "Meta's $25 billion share sale oversubscribed 5x for AI spending",
-      "GM moving stock listing from NYSE to Nasdaq on November 17"
+      "S&P 500 rises 0.28%, third straight gain, as Fed holds rates steady",
+      "Oil diverges: WTI jumps 2%, Brent falls 3%",
+      "Fed holds at 3.75-4.00% with two dissents favoring a hike",
+      "Warsh announces fewer rate-setting meetings starting 2027",
+      "Q3 GDP expected at 3.2-3.4% tomorrow; PCE inflation at 3.6% annual",
+      "Goods trade deficit widens to $134.9B",
+      "Oracle soars 11% as it pledges to cap debt and turn cash-flow positive by 2028",
+      "Datavault says its Bitcoin holdings may not exist",
+      "Private equity faces political pressure ahead of midterms",
+      "Israel election leaves Netanyahu short of majority",
+      "Fl\u00e1vio Bolsonaro flees to Miami after election defeat",
+      "Microsoft beats, up 4% after hours on 48% Azure growth",
+      "Alphabet misses, sinks 10% after hours as AI spending burns cash",
+      "ServiceNow drops 15%+ after hours on slight EPS miss and weak bookings guide",
+      "Anthropic says Claude wrote 90%+ of its codebase contributions"
     ]
   }
 }
