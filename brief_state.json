@@ -8,19 +8,19 @@
     "bls:CES0500000003": "September 2026",
     "bls:JTS000000000000000JOL": "August 2026",
     "eia:Crude inventories ex-SPR (k bbl)": "2026-10-23",
-    "fred:DFF": "2026-10-27",
-    "fred:T10Y2Y": "2026-10-28",
-    "fred:DGS2": "2026-10-27",
-    "fred:BAMLH0A0HYM2": "2026-10-27",
-    "fred:BAMLC0A0CM": "2026-10-27",
+    "fred:DFF": "2026-10-28",
+    "fred:T10Y2Y": "2026-10-29",
+    "fred:DGS2": "2026-10-28",
+    "fred:BAMLH0A0HYM2": "2026-10-28",
+    "fred:BAMLC0A0CM": "2026-10-28",
     "fred:UMCSENT": "2026-09-01",
     "fred:RSAFS": "2026-09-01",
-    "fred:ICSA": "2026-10-17",
-    "eia:Natural gas storage (Bcf)": "2026-10-16"
+    "fred:ICSA": "2026-10-24",
+    "eia:Natural gas storage (Bcf)": "2026-10-23"
   },
   "sent": {
     "morning": "2026-10-29",
-    "close": "2026-10-28",
+    "close": "2026-10-29",
     "weekly": "2026-10-24"
   },
   "morning_headlines": {
@@ -41,7 +41,7 @@
       "Putin says Russia in 'close contact' with Musk on satellite coordination"
     ]
   },
-  "last_run": "2026-10-29T18:36:49+00:00",
+  "last_run": "2026-10-29T22:03:33+00:00",
   "newsletter_seen": [
     "<010001a125e6446e-738d1260-25a4-4d11-ba65-f1fd8c0005ad-000000@email.amazonses.com>",
     "<20261010085755.47871346.656693@sailthru.com>",
@@ -254,26 +254,29 @@
     "<20261029062449.48154727.490886@sailthru.com>",
     "<K0IBR2gvSaS1D_u0ZoTqtw@geopod-ismtpd-53>",
     "<20261029.105154.fee29106@mta15>",
-    "<20261029072832.48160157.479800@sailthru.com>"
+    "<20261029072832.48160157.479800@sailthru.com>",
+    "<20261029082916.48161684.39960@sailthru.com>",
+    "<20261029100634.48164963.186965@sailthru.com>",
+    "<20261029115826.48166717.494156@sailthru.com>",
+    "<0E.B8.06462.59193EA6@i-0f804fd7f05cebe7e.mta1vrest.sd.prd.sparkpost>",
+    "<20261029151446.48170093.461986@sailthru.com>",
+    "<20261029170019.48161925.20130@sailthru.com>",
+    "<20261029175509.48173299.362319@sailthru.com>"
   ],
   "close_headlines": {
-    "date": "2026-10-28",
+    "date": "2026-10-29",
     "items": [
-      "S&P 500 rises 0.28%, third straight gain, as Fed holds rates steady",
-      "Oil diverges: WTI jumps 2%, Brent falls 3%",
-      "Fed holds at 3.75-4.00% with two dissents favoring a hike",
-      "Warsh announces fewer rate-setting meetings starting 2027",
-      "Q3 GDP expected at 3.2-3.4% tomorrow; PCE inflation at 3.6% annual",
-      "Goods trade deficit widens to $134.9B",
-      "Oracle soars 11% as it pledges to cap debt and turn cash-flow positive by 2028",
-      "Datavault says its Bitcoin holdings may not exist",
-      "Private equity faces political pressure ahead of midterms",
-      "Israel election leaves Netanyahu short of majority",
-      "Fl\u00e1vio Bolsonaro flees to Miami after election defeat",
-      "Microsoft beats, up 4% after hours on 48% Azure growth",
-      "Alphabet misses, sinks 10% after hours as AI spending burns cash",
-      "ServiceNow drops 15%+ after hours on slight EPS miss and weak bookings guide",
-      "Anthropic says Claude wrote 90%+ of its codebase contributions"
+      "Alphabet drags Nasdaq to worst day in months as AI spending fears intensify",
+      "Yields fall as investors digest macro data and Fed decision",
+      "Fed holds rates, keeps December hike on the table",
+      "Economy grew 3.4% in Q3, driven by AI capital spending",
+      "Inflation re-accelerates to 3.6% annually",
+      "Amazon's free cash flow swings to negative $42.4 billion on AI buildout",
+      "Thrive Holdings to take ADT private for $15.3 billion",
+      "DoorDash to buy Instacart for $17 billion",
+      "Google's AI search draws users but earns less ad money",
+      "Mistral releases weights for Mistral Large 4",
+      "Google launches Gemini 4 Carbon with cybersecurity focus"
     ]
   }
 }
