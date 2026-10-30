@@ -19,29 +19,25 @@
     "eia:Natural gas storage (Bcf)": "2026-10-23"
   },
   "sent": {
-    "morning": "2026-10-29",
+    "morning": "2026-10-30",
     "close": "2026-10-29",
     "weekly": "2026-10-24"
   },
   "morning_headlines": {
-    "2026-10-29": [
-      "Nasdaq futures down nearly 1% as Alphabet's after-hours plunge weighs",
-      "Leveraged loan distress doubles to highest since May 2020",
-      "Q3 GDP and PCE inflation due at 6:30am MT, key test for Fed path",
-      "ECB's Lagarde to step down February 2027, nine months early",
-      "Hyperscalers raise $326 billion in stock and bonds to fund AI race",
-      "Meta plans up to $100 billion more in equity issuance",
-      "Weil, Gotshal & Manges, legendary bankruptcy law firm, to dissolve",
-      "Trian offers to buy Wendy's for $1.4 billion",
-      "NYT: Chinese executive with ties to Nvidia CEO passed intel to Beijing",
-      "Over 39 million early votes cast; turnout may rival 2018 blue wave",
-      "House progressives plan forced votes on Medicare for All, ICE, Israel aid",
-      "DeepSeek and Moonshot AI reportedly relied on GPT-6 distillation for model training",
-      "Sierra Club: US power emissions to hit 2.1B tons by 2030, up 42% from 2025",
-      "Putin says Russia in 'close contact' with Musk on satellite coordination"
+    "2026-10-30": [
+      "Nasdaq futures plunge 2.5% on Intel and Amazon earnings rout",
+      "Korea's KOSPI plunges 3.5%, triggers emergency trading curbs",
+      "Bitcoin drops 4% as Binance suffers record $6.3 billion hack",
+      "Bank of Japan holds rates at 1.25%, declares inflation target met",
+      "ECB holds rates at 2.5%, Lagarde announces early departure",
+      "AI spending fears trigger broad tech rotation",
+      "Aschenbrenner's fund pitches Fluidstack at $40 billion valuation",
+      "Democrats prep subpoenas for CEOs who courted Trump",
+      "Intel crashes 26% on weak Q4 guidance despite data center surge",
+      "Amazon sinks 7% as AI spending pushes free cash flow deeper into negative"
     ]
   },
-  "last_run": "2026-10-30T02:13:59+00:00",
+  "last_run": "2026-10-30T11:32:28+00:00",
   "newsletter_seen": [
     "<010001a125e6446e-738d1260-25a4-4d11-ba65-f1fd8c0005ad-000000@email.amazonses.com>",
     "<20261010085755.47871346.656693@sailthru.com>",
@@ -261,7 +257,15 @@
     "<0E.B8.06462.59193EA6@i-0f804fd7f05cebe7e.mta1vrest.sd.prd.sparkpost>",
     "<20261029151446.48170093.461986@sailthru.com>",
     "<20261029170019.48161925.20130@sailthru.com>",
-    "<20261029175509.48173299.362319@sailthru.com>"
+    "<20261029175509.48173299.362319@sailthru.com>",
+    "<20261029212948.48174889.439461@sailthru.com>",
+    "<XYgCx8_ZQyS_IeprrYxYiQ@geopod-ismtpd-10>",
+    "<010001a18c25304f-9682fba8-a9ca-4b7d-b40f-9e198ae3024d-000000@email.amazonses.com>",
+    "<20261030055314.48176014.644426@sailthru.com>",
+    "<20261030.104233.aa1e6485@mta27>",
+    "<er-_wMd6QdydH0dMqOkmjQ@geopod-ismtpd-17>",
+    "<20261030.105138.1eb72732@mta24>",
+    "<20261030072842.48178063.579424@sailthru.com>"
   ],
   "close_headlines": {
     "date": "2026-10-29",
