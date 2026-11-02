@@ -9,7 +9,7 @@
     "bls:JTS000000000000000JOL": "August 2026",
     "eia:Crude inventories ex-SPR (k bbl)": "2026-10-23",
     "fred:DFF": "2026-10-30",
-    "fred:T10Y2Y": "2026-10-30",
+    "fred:T10Y2Y": "2026-11-02",
     "fred:DGS2": "2026-10-30",
     "fred:BAMLH0A0HYM2": "2026-10-30",
     "fred:BAMLC0A0CM": "2026-10-30",
@@ -37,7 +37,7 @@
       "Midterms put $2.5 trillion in planned data center builds at risk"
     ]
   },
-  "last_run": "2026-11-02T21:54:41+00:00",
+  "last_run": "2026-11-02T23:03:15+00:00",
   "newsletter_seen": [
     "<010001a125e6446e-738d1260-25a4-4d11-ba65-f1fd8c0005ad-000000@email.amazonses.com>",
     "<20261010085755.47871346.656693@sailthru.com>",
@@ -298,23 +298,25 @@
     "<20261102100205.48207855.241192@sailthru.com>",
     "<20261102115830.48209626.434242@sailthru.com>",
     "<B9.A2.47086.671E8EA6@i-0a0bba6de18547de4.mta1vrest.sd.prd.sparkpost>",
-    "<20261102152504.48212385.459565@sailthru.com>"
+    "<20261102152504.48212385.459565@sailthru.com>",
+    "<1366873360.297823.1793656522928@lor1-app140796.prod.linkedin.com>",
+    "<20261102175748.48214198.453122@sailthru.com>"
   ],
   "close_headlines": {
     "date": "2026-11-02",
     "items": [
-      "Nasdaq drops 1% as chip stocks extend rout; Dow bucks trend on defensive bid",
-      "Oil plunges 7%+ as US and Iran signal openness to peace talks",
-      "Treasury yields edge lower as risk-off mood lifts bonds",
-      "ISM Manufacturing rises to 55.5, beating expectations on AI-driven equipment demand",
-      "Marvell to acquire Lumentum in $115 billion all-stock deal, creating AI connectivity giant",
-      "Oracle files to raise $20 billion for AI data center buildout",
-      "Supernus and Indivior complete merger, forming diversified CNS drugmaker",
-      "onsemi to acquire Ferric for up to $775 million to expand AI power delivery",
-      "50 million Americans have already voted; turnout signals close midterm races",
-      "Trump says he will try to protect Musk from Democratic investigations",
-      "European supermarkets hit by coordinated refrigerator cyberattacks",
-      "Binance covered $6.3 billion hack with reserves; stablecoin issuers froze $2.3 billion"
+      "Nasdaq slides 1% as tech bleeds; Dow closes higher on defensive bid",
+      "Oil plunges 7.5% as Iran signals talks; Brent drops 11%",
+      "Gold rises 1.5% as yields dip ahead of midterms",
+      "ISM Manufacturing PMI rises to 55.5 in October, above expectations",
+      "Chip stocks shed $3.7 trillion since October peak",
+      "Marvell to acquire Lumentum for $115 billion in largest-ever tech merger",
+      "Oracle announces $20 billion fundraising for AI buildout",
+      "onsemi to acquire Ferric for up to $775 million in power-delivery deal",
+      "Supernus and Indivior complete merger, creating CNS pharma leader",
+      "Supreme Court denies DOJ request to intervene in California ballot fight",
+      "Anthropic Q3 revenue nears $17 billion; IPO valuation expectations drop to $1.5-1.6 trillion",
+      "Palantir Q3 revenue surges 96% to $2.31 billion; raises full-year guidance"
     ]
   }
 }
