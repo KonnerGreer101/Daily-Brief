@@ -19,25 +19,30 @@
     "eia:Natural gas storage (Bcf)": "2026-10-23"
   },
   "sent": {
-    "morning": "2026-11-02",
+    "morning": "2026-11-03",
     "close": "2026-11-02",
     "weekly": "2026-10-31"
   },
   "morning_headlines": {
-    "2026-11-02": [
-      "Oil drops 3%+ as Trump signals patience on Iran diplomacy",
-      "Chip stocks lead pre-market rebound after Friday's rout",
-      "ISM Manufacturing PMI due at 8am MT, expected steady at 54.7",
-      "OpenAI raises just $11 billion of $30 billion target as AI investor appetite cools",
-      "Marvell to acquire Lumentum in $115 billion all-stock deal",
-      "Final NYT/Siena polls show Democrats ahead in all seven Senate battlegrounds",
-      "Rep. Haley Stevens (D-Mich.) endorses Republican Mike Rogers two days before midterms",
-      "Top 20 midterm donors have poured about $2 billion into federal races",
-      "Binance resumes withdrawals after FBI blames North Korea for $6.3 billion hack",
-      "Midterms put $2.5 trillion in planned data center builds at risk"
+    "2026-11-03": [
+      "Oil rebounds after overnight U.S. strikes on Iran's Qeshm Island",
+      "Apple falls 4%+ premarket on iPhone Duo supply constraints and memory cost concerns",
+      "Chip stocks rebound premarket as AMD earnings loom",
+      "U.S. midterm elections today: Democrats favored to win Congress",
+      "Convertible bonds post worst October since 2008",
+      "Big Tech raises tens of billions to fund AI buildout",
+      "Apollo launches $11.2 billion European private credit platform",
+      "Blackstone-led group to buy stake in LNG Canada for $3.1 billion",
+      "Apollo Q3 earnings miss estimates; fee-related earnings beat",
+      "U.S. launches unannounced defensive strikes on Iran's Qeshm Island",
+      "Pentagon's former top military planner under federal leak investigation",
+      "Goldman restricts AI coding tools to engineers only",
+      "OpenAI hires former Army Secretary for national security push",
+      "China plans broad AI safety standards covering development through deployment",
+      "SpaceX pursues entry into U.S. wireless market"
     ]
   },
-  "last_run": "2026-11-03T03:45:57+00:00",
+  "last_run": "2026-11-03T12:32:54+00:00",
   "newsletter_seen": [
     "<010001a125e6446e-738d1260-25a4-4d11-ba65-f1fd8c0005ad-000000@email.amazonses.com>",
     "<20261010085755.47871346.656693@sailthru.com>",
@@ -300,7 +305,14 @@
     "<B9.A2.47086.671E8EA6@i-0a0bba6de18547de4.mta1vrest.sd.prd.sparkpost>",
     "<20261102152504.48212385.459565@sailthru.com>",
     "<1366873360.297823.1793656522928@lor1-app140796.prod.linkedin.com>",
-    "<20261102175748.48214198.453122@sailthru.com>"
+    "<20261102175748.48214198.453122@sailthru.com>",
+    "<20261102212919.48215172.316464@sailthru.com>",
+    "<Z7JYEWGRRge45D18oYApwg@geopod-ismtpd-102>",
+    "<010001a1a0f58dc7-e7af75a5-ef14-48be-9ddf-e51110f16c12-000000@email.amazonses.com>",
+    "<20261103054109.48216097.679816@sailthru.com>",
+    "<nVutBLF5QpKTbN6k5J9ILA@geopod-ismtpd-14>",
+    "<20261103.115139.a6ea0fda@mta29>",
+    "<20261103072839.48232483.412619@sailthru.com>"
   ],
   "close_headlines": {
     "date": "2026-11-02",
