@@ -7,12 +7,12 @@
     "bls:LNS14000000": "September 2026",
     "bls:CES0500000003": "September 2026",
     "bls:JTS000000000000000JOL": "September 2026",
-    "eia:Crude inventories ex-SPR (k bbl)": "2026-10-23",
-    "fred:DFF": "2026-11-02",
-    "fred:T10Y2Y": "2026-11-03",
-    "fred:DGS2": "2026-11-02",
-    "fred:BAMLH0A0HYM2": "2026-11-02",
-    "fred:BAMLC0A0CM": "2026-11-02",
+    "eia:Crude inventories ex-SPR (k bbl)": "2026-10-30",
+    "fred:DFF": "2026-11-03",
+    "fred:T10Y2Y": "2026-11-04",
+    "fred:DGS2": "2026-11-03",
+    "fred:BAMLH0A0HYM2": "2026-11-03",
+    "fred:BAMLC0A0CM": "2026-11-03",
     "fred:UMCSENT": "2026-09-01",
     "fred:RSAFS": "2026-09-01",
     "fred:ICSA": "2026-10-24",
@@ -20,7 +20,7 @@
   },
   "sent": {
     "morning": "2026-11-04",
-    "close": "2026-11-03",
+    "close": "2026-11-04",
     "weekly": "2026-10-31"
   },
   "morning_headlines": {
@@ -36,7 +36,7 @@
       "Voters approve AI regulation measures and data center moratoriums nationwide"
     ]
   },
-  "last_run": "2026-11-04T19:58:12+00:00",
+  "last_run": "2026-11-04T23:03:47+00:00",
   "newsletter_seen": [
     "<010001a125e6446e-738d1260-25a4-4d11-ba65-f1fd8c0005ad-000000@email.amazonses.com>",
     "<20261010085755.47871346.656693@sailthru.com>",
@@ -321,25 +321,34 @@
     "<20261104.114134.39412332@mta29>",
     "<oiCSV9bQTh2V1Fs4Gg_Y9g@geopod-ismtpd-9>",
     "<20261104.115205.25d4cf4d@mta18>",
-    "<20261104072832.48252350.477932@sailthru.com>"
+    "<20261104072832.48252350.477932@sailthru.com>",
+    "<20261104082820.48253330.35852@sailthru.com>",
+    "<20261104100324.48254879.158790@sailthru.com>",
+    "<20261104115827.48256855.497404@sailthru.com>",
+    "<6D.C5.40086.18F7BEA6@i-04dac57fef8a85b96.mta1vrest.sd.prd.sparkpost>",
+    "<20261104150201.48260039.441923@sailthru.com>",
+    "<954305905.1057638.1793826161114@lor1-app149181.prod.linkedin.com>",
+    "<20261104174245.48262482.457830@sailthru.com>"
   ],
   "close_headlines": {
-    "date": "2026-11-03",
+    "date": "2026-11-04",
     "items": [
-      "Tech rebound lifts Nasdaq while Dow lags on defensive weakness",
-      "Yields climb as 10-year tops 4.95%",
-      "Meta raises $15 billion in dollar bonds to fund AI buildout",
-      "Job openings surge in September; quits rate hits 15-month high",
-      "AI-displaced workers take longer to find new jobs",
-      "Prediction markets have a lot riding on a Democratic sweep",
-      "CVR Energy to buy two Marathon refineries for $4.2 billion",
-      "Disney plans third round of cuts this year under new CEO",
-      "DOJ deploys about 1,000 election monitors to all 50 states for first time",
-      "Voting machine issues hit key New York House race",
-      "North Korea linked to plan to steal $6.3 billion from Binance via fake job interview",
-      "Canva restructures, cutting 22% of workforce",
-      "Google ties web search access to school AI tool restrictions",
-      "Uber's Jill Hazelbaker joins OpenAI as chief corporate affairs officer"
+      "Stocks post best day since August on midterm clarity",
+      "Oil crashes 8% as Vance signals push to end Iran war",
+      "Gold jumps 3.3% as dollar weakens",
+      "Big tech rallies on slower data center buildout bets",
+      "Chipmakers and data center names sell off",
+      "Democratic Senate seen protecting Fed independence",
+      "Prediction markets proved faster than TV on election night",
+      "CVS to split into two companies by 2028",
+      "Array Technologies and Shoals to merge in solar deal",
+      "LIV Golf rescue collapses; liquidation expected",
+      "Vance blames Iran war for GOP midterm losses",
+      "House Speaker Johnson to step down as top Republican",
+      "Democrats take Texas state House",
+      "VC math on AI may have just changed",
+      "Arm beats on revenue but stock slips after hours",
+      "Meta raises \u20ac9B in debut euro bond sale"
     ]
   }
 }
