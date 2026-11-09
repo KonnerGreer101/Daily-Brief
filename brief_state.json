@@ -8,11 +8,11 @@
     "bls:CES0500000003": "October 2026",
     "bls:JTS000000000000000JOL": "September 2026",
     "eia:Crude inventories ex-SPR (k bbl)": "2026-10-30",
-    "fred:DFF": "2026-11-05",
+    "fred:DFF": "2026-11-06",
     "fred:T10Y2Y": "2026-11-06",
-    "fred:DGS2": "2026-11-05",
-    "fred:BAMLH0A0HYM2": "2026-11-05",
-    "fred:BAMLC0A0CM": "2026-11-05",
+    "fred:DGS2": "2026-11-06",
+    "fred:BAMLH0A0HYM2": "2026-11-06",
+    "fred:BAMLC0A0CM": "2026-11-06",
     "fred:UMCSENT": "2026-09-01",
     "fred:RSAFS": "2026-09-01",
     "fred:ICSA": "2026-10-31",
@@ -20,7 +20,7 @@
   },
   "sent": {
     "morning": "2026-11-09",
-    "close": "2026-11-06",
+    "close": "2026-11-09",
     "weekly": "2026-11-07"
   },
   "morning_headlines": {
@@ -40,7 +40,7 @@
       "Coinbase receives full OCC trust bank charter approval"
     ]
   },
-  "last_run": "2026-11-09T12:33:38+00:00",
+  "last_run": "2026-11-09T21:36:02+00:00",
   "newsletter_seen": [
     "<010001a125e6446e-738d1260-25a4-4d11-ba65-f1fd8c0005ad-000000@email.amazonses.com>",
     "<20261010085755.47871346.656693@sailthru.com>",
@@ -377,24 +377,31 @@
     "<20261108092336.48320261.603433@sailthru.com>",
     "<20261109.010551.665e60d5@mta11>",
     "<20261109054721.48323754.650680@sailthru.com>",
-    "<0zalWPTESr2gbTI4KaPn-Q@geopod-ismtpd-3>"
+    "<0zalWPTESr2gbTI4KaPn-Q@geopod-ismtpd-3>",
+    "<20261109073156.48325958.505054@sailthru.com>",
+    "<20261109.123214.56d04674@mta31>",
+    "<20261109082918.48326545.38969@sailthru.com>",
+    "<20261109100711.48327959.181192@sailthru.com>",
+    "<20261109120138.48329821.545137@sailthru.com>",
+    "<41.AB.65239.D7812FA6@i-0758cfe76db884892.mta1vrest.sd.prd.sparkpost>",
+    "<20261109151531.48332681.495287@sailthru.com>"
   ],
   "close_headlines": {
-    "date": "2026-11-06",
+    "date": "2026-11-09",
     "items": [
-      "Chip stocks rebound sharply after Thursday's rout, but VIX stays elevated",
-      "Treasury yields rise as strong jobs data firms up December rate hike",
-      "Fed's Daly says more rate hikes likely as inflation keeps Americans on a 'treadmill'",
-      "Part-time workers surge 339,000 as underlying labor market shows stress",
-      "Consumer sentiment ticks up 3 points despite AI bubble worries",
-      "CoreWeave bond yield tops 16% as AI debt stress mounts",
-      "OpenAI closes $11B funding at $1.25T valuation, below original target",
-      "Anthropic IPO valuation expectations fall to $1T-$1.3T range",
-      "Cognizant completes Wizeline acquisition",
-      "Trump replaces chief of staff Wiles with immigration hardliner Stephen Miller",
-      "Microsoft reportedly ends Oracle AI computing rental deal",
-      "US intelligence says Megaspeed exec was recruited by Chinese spy agency",
-      "Google spent $548M to acquire 3M Qualcomm shares"
+      "Stocks surge as dip buyers return despite Nvidia drag",
+      "Oil tumbles more than 4% on Iran peace hopes",
+      "Yields rise 10 basis points ahead of CPI",
+      "Oil-yields correlation has flipped, suggesting growth worries now dominate inflation fears",
+      "Job market anxiety hits highest since April 2020 despite low unemployment",
+      "Retail investors bought the October dip in chips and AI stocks",
+      "Surgery Partners raises HealthSpan merger to $25 per share after competing $28 bid",
+      "SS&C priced $1.05 billion in convertible notes to refinance 2027 debt",
+      "Massie files impeachment resolution against Defense Secretary Hegseth",
+      "Trump officials' AI investments raise ethics questions over data center push",
+      "Nvidia falls 4.27% as board investigates CEO Huang's affair with suspected Chinese spy",
+      "Anthropic releases Fable 5.2 and Mythos 5.2 ahead of expected IPO",
+      "SpaceX plans $24 billion gas-fired power plant and supercompute facility in Texas"
     ]
   }
 }
