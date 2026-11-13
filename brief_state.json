@@ -2,17 +2,17 @@
   "macro_seen": {
     "bls:CUSR0000SA0": "October 2026",
     "bls:CUSR0000SA0L1E": "October 2026",
-    "bls:WPUFD4": "September 2026",
+    "bls:WPUFD4": "October 2026",
     "bls:CES0000000001": "October 2026",
     "bls:LNS14000000": "October 2026",
     "bls:CES0500000003": "October 2026",
     "bls:JTS000000000000000JOL": "September 2026",
     "eia:Crude inventories ex-SPR (k bbl)": "2026-11-06",
-    "fred:DFF": "2026-11-11",
-    "fred:T10Y2Y": "2026-11-12",
-    "fred:DGS2": "2026-11-10",
-    "fred:BAMLH0A0HYM2": "2026-11-11",
-    "fred:BAMLC0A0CM": "2026-11-11",
+    "fred:DFF": "2026-11-12",
+    "fred:T10Y2Y": "2026-11-13",
+    "fred:DGS2": "2026-11-12",
+    "fred:BAMLH0A0HYM2": "2026-11-12",
+    "fred:BAMLC0A0CM": "2026-11-12",
     "fred:UMCSENT": "2026-09-01",
     "fred:RSAFS": "2026-09-01",
     "fred:ICSA": "2026-11-07",
@@ -20,7 +20,7 @@
   },
   "sent": {
     "morning": "2026-11-13",
-    "close": "2026-11-12",
+    "close": "2026-11-13",
     "weekly": "2026-11-07"
   },
   "morning_headlines": {
@@ -38,7 +38,7 @@
       "Nscale warns it needs more funding for $44.6B Anthropic deal, clouding $35B IPO"
     ]
   },
-  "last_run": "2026-11-13T19:57:04+00:00",
+  "last_run": "2026-11-13T23:03:13+00:00",
   "newsletter_seen": [
     "<010001a125e6446e-738d1260-25a4-4d11-ba65-f1fd8c0005ad-000000@email.amazonses.com>",
     "<20261010085755.47871346.656693@sailthru.com>",
@@ -423,24 +423,30 @@
     "<20261113053914.48413100.609060@sailthru.com>",
     "<GCRtm_XVQ163mQBRTafbag@geopod-ismtpd-74>",
     "<20261113.115202.71658880@mta31>",
-    "<20261113072856.48415311.558755@sailthru.com>"
+    "<20261113072856.48415311.558755@sailthru.com>",
+    "<20261113082917.48415938.35097@sailthru.com>",
+    "<20261113095941.48417505.112120@sailthru.com>",
+    "<F7.4B.58598.6E147FA6@i-0f84d1855e61061c8.mta1vrest.sd.prd.sparkpost>",
+    "<20261113120219.48419517.526896@sailthru.com>",
+    "<20261113150131.48422746.404073@sailthru.com>",
+    "<20261113175726.48426392.349452@sailthru.com>"
   ],
   "close_headlines": {
-    "date": "2026-11-12",
+    "date": "2026-11-13",
     "items": [
-      "Yields surge as hot inflation revives rate-hike expectations",
-      "Oil jumps on fading Iran deal hopes, gold sinks",
-      "Small caps underperform as financial conditions tighten",
-      "Underlying inflation accelerates across most of the consumer basket",
-      "Jobless claims stay historically low, labor market remains tight",
-      "Nvidia rivals rally as investors reposition",
-      "Anthropic IPO six times oversubscribed, could be largest ever",
-      "SpaceX and Tesla merger talks progress toward potential December announcement",
-      "Trump threatens to double tariffs on Mexican imports over migrant caravan",
-      "Lawmakers probe Commerce Secretary Lutnick over export control inaction",
-      "Update: Jensen Huang formally resigns; Colette Kress named interim CEO",
-      "Cerebras beats on revenue, announces Microsoft deal, stock surges after hours",
-      "Microsoft experiences widespread outage affecting Outlook"
+      "Nvidia fallout reverses Thursday's chip rally, Nasdaq drops nearly 1%",
+      "10-year Treasury yield holds above 5% at 5.15%",
+      "Producer prices up 6.5% annually, highest since late 2022",
+      "Truck transportation costs surge 25% year-over-year",
+      "Fed's Goolsbee signals more work needed on inflation",
+      "Samsung in talks to acquire Modine for data center cooling",
+      "Nscale's debt balloons to $5.5 billion, needs more financing for Anthropic deal",
+      "Bessent publicly blames Lutnick for Megaspeed inaction",
+      "Mossad director in Washington for Iran war talks",
+      "FAA orders rare nationwide ground stop, grounding all U.S. departures",
+      "Microsoft apologizes for second-day outage, blames network upgrade",
+      "SpaceX attempts first dual catch of Starship and Super Heavy",
+      "Anthropic IPO faces Nvidia contagion concerns one week out"
     ]
   }
 }
